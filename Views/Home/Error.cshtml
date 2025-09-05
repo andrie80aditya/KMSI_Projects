@@ -1,0 +1,215 @@
+﻿@model KMSI_Projects.Models.ViewModels.ErrorViewModel
+@{
+    ViewData["Title"] = Model?.ErrorTitle ?? "Error";
+    Layout = "_Layout";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+            <div class="error-page text-center">
+                <!-- Error Icon -->
+                <div class="error-icon mb-4">
+                    <i class="fas fa-exclamation-triangle text-warning" style="font-size: 4rem;"></i>
+                </div>
+
+                <!-- Error Title -->
+                <h1 class="display-4 text-danger mb-3">
+                    @(Model?.ErrorTitle ?? "Oops! Something went wrong")
+                </h1>
+
+                <!-- Status Code (if available) -->
+                @if (Model?.StatusCode.HasValue == true)
+                {
+                    <h2 class="text-muted mb-4">Error @Model.StatusCode</h2>
+                }
+
+                <!-- Error Message -->
+                @if (!string.IsNullOrEmpty(Model?.ErrorMessage))
+                {
+                    <div class="alert alert-danger mb-4" role="alert">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        @Model.ErrorMessage
+                    </div>
+                }
+
+                <!-- Default Message -->
+                @if (string.IsNullOrEmpty(Model?.ErrorMessage))
+                {
+                    <p class="lead text-muted mb-4">
+                        We apologize for the inconvenience. An unexpected error has occurred while processing your request.
+                    </p>
+                }
+
+                <!-- Suggested Action -->
+                <p class="text-muted mb-4">
+                    @(Model?.SuggestedAction ?? "Please try again later or contact support if the problem persists.")
+                </p>
+
+                <!-- Request ID (for tracking) -->
+                @if (Model?.ShowRequestId == true)
+                {
+                    <div class="alert alert-info mb-4" role="alert">
+                        <small>
+                            <strong>Request ID:</strong> @Model.RequestId
+                            <br>
+                            <em>Please include this ID when contacting support.</em>
+                        </small>
+                    </div>
+                }
+
+                <!-- Action Buttons -->
+                <div class="error-actions mb-4">
+                    @if (Model?.ShowBackButton != false)
+                    {
+                        <button onclick="history.back()" class="btn btn-outline-primary me-3">
+                            <i class="fas fa-arrow-left me-2"></i>Go Back
+                        </button>
+                    }
+
+                    @if (Model?.ShowHomeButton != false)
+                    {
+                        <a href="@Url.Action("Index", "Home")" class="btn btn-primary me-3">
+                            <i class="fas fa-home me-2"></i>Go to Dashboard
+                        </a>
+                    }
+
+                    <a href="@Url.Action("Login", "Account")" class="btn btn-outline-secondary">
+                        <i class="fas fa-sign-in-alt me-2"></i>Login Page
+                    </a>
+                </div>
+
+                <!-- Contact Support -->
+                <div class="support-info">
+                    <p class="text-muted small">
+                        Need help? Contact our support team at
+                        <a href="mailto:@(Model?.SupportEmail ?? "support@kawaimusic.id")" class="text-decoration-none">
+                            <i class="fas fa-envelope me-1"></i>@(Model?.SupportEmail ?? "support@kawaimusic.id")
+                        </a>
+                    </p>
+                </div>
+
+                <!-- Development Information (only shown in development) -->
+                @if (Model?.IsDevelopment == true)
+                {
+                    <div class="mt-5">
+                        <div class="alert alert-warning text-start" role="alert">
+                            <h5 class="alert-heading">
+                                <i class="fas fa-bug me-2"></i>Development Information
+                            </h5>
+
+                            @if (!string.IsNullOrEmpty(Model.ExceptionDetails))
+                            {
+                                <hr>
+                                <h6>Exception Details:</h6>
+                                <pre class="small text-dark">@Model.ExceptionDetails</pre>
+                            }
+
+                            @if (!string.IsNullOrEmpty(Model.StackTrace))
+                            {
+                                <hr>
+                                <h6>Stack Trace:</h6>
+                                <pre class="small text-dark" style="max-height: 300px; overflow-y: auto;">@Model.StackTrace</pre>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Custom CSS for Error Page -->
+<style>
+    .error-page {
+        padding: 2rem 0;
+        min-height: 60vh;
+    }
+
+    .error-icon {
+        animation: pulse 2s infinite;
+    }
+
+    @@keyframes pulse {
+        0%
+    {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+
+    }
+
+    .error-actions .btn {
+        margin-bottom: 0.5rem;
+    }
+
+    .support-info {
+        border-top: 1px solid #dee2e6;
+        padding-top: 1rem;
+        margin-top: 2rem;
+    }
+
+    @@media (max-width: 768px) {
+        .error-page
+    {
+        padding: 1rem 0;
+    }
+
+    .error-actions .btn {
+        display: block;
+        width: 100%;
+        margin-bottom: 0.5rem;
+        margin-right: 0 !important;
+    }
+
+    }
+</style>
+
+<!-- Auto-refresh functionality for temporary errors -->
+<script>
+    // Auto-hide development info after clicking outside
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add click-to-copy functionality for Request ID
+        const requestIdElement = document.querySelector('.alert-info small');
+        if (requestIdElement) {
+            requestIdElement.style.cursor = 'pointer';
+            requestIdElement.title = 'Click to copy Request ID';
+
+            requestIdElement.addEventListener('click', function() {
+                const requestId = '@Model?.RequestId';
+                navigator.clipboard.writeText(requestId).then(function() {
+                    // Show temporary success message
+                    const original = requestIdElement.innerHTML;
+                    requestIdElement.innerHTML = '<i class="fas fa-check text-success"></i> Request ID copied!';
+                    setTimeout(function() {
+                        requestIdElement.innerHTML = original;
+                    }, 2000);
+                });
+            });
+        }
+
+        // Add retry functionality for certain error types
+    @if (Model?.StatusCode == 500 || Model?.StatusCode == 503)
+    {
+        <text>
+                // Add retry button for server errors
+                const retryButton = document.createElement('button');
+                retryButton.className = 'btn btn-outline-success me-3';
+                retryButton.innerHTML = '<i class="fas fa-redo me-2"></i>Try Again';
+                retryButton.onclick = function() { location.reload(); };
+
+                const actionDiv = document.querySelector('.error-actions');
+                if (actionDiv) {
+                    actionDiv.insertBefore(retryButton, actionDiv.firstChild);
+                }
+        </text>
+    }
+    });
+</script>
