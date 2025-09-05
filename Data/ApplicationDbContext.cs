@@ -62,7 +62,7 @@ namespace KMSI_Projects.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // Company self-referencing relationship
+            // Company self - referencing relationship
             modelBuilder.Entity<Company>()
                 .HasOne(c => c.ParentCompany)
                 .WithMany(c => c.ChildCompanies)
@@ -88,6 +88,193 @@ namespace KMSI_Projects.Data
                 .WithMany(c => c.Sites)
                 .HasForeignKey(s => s.CompanyId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // =============================================
+            // STUDENT-GRADE RELATIONSHIPS CONFIGURATION
+            // =============================================
+
+            // Explicit configuration for Grade.CurrentStudents relationship
+            modelBuilder.Entity<Grade>()
+                .HasMany(g => g.CurrentStudents)
+                .WithOne(s => s.CurrentGrade)
+                .HasForeignKey(s => s.CurrentGradeId)
+                .OnDelete(DeleteBehavior.SetNull); // Set to null when grade is deleted
+
+            // Student relationships - prevent cascading deletes
+            modelBuilder.Entity<Student>()
+                .HasOne(s => s.Company)
+                .WithMany(c => c.Students)
+                .HasForeignKey(s => s.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Student>()
+                .HasOne(s => s.Site)
+                .WithMany(st => st.Students)
+                .HasForeignKey(s => s.SiteId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Student>()
+                .HasOne(s => s.AssignedTeacher)
+                .WithMany(t => t.AssignedStudents)
+                .HasForeignKey(s => s.AssignedTeacherId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Grade relationships
+            modelBuilder.Entity<Grade>()
+                .HasOne(g => g.Company)
+                .WithMany(c => c.Grades)
+                .HasForeignKey(g => g.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Student Grade History relationships
+            modelBuilder.Entity<StudentGradeHistory>()
+                .HasOne(sgh => sgh.Student)
+                .WithMany(s => s.StudentGradeHistories)
+                .HasForeignKey(sgh => sgh.StudentId)
+                .OnDelete(DeleteBehavior.Cascade); // Delete history when student is deleted
+
+            modelBuilder.Entity<StudentGradeHistory>()
+                .HasOne(sgh => sgh.Grade)
+                .WithMany(g => g.StudentGradeHistories)
+                .HasForeignKey(sgh => sgh.GradeId)
+                .OnDelete(DeleteBehavior.Restrict); // Don't delete grade if there's history
+
+            // Grade Book relationships
+            modelBuilder.Entity<GradeBook>()
+                .HasOne(gb => gb.Grade)
+                .WithMany(g => g.GradeBooks)
+                .HasForeignKey(gb => gb.GradeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<GradeBook>()
+                .HasOne(gb => gb.Book)
+                .WithMany(b => b.GradeBooks)
+                .HasForeignKey(gb => gb.BookId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // =============================================
+            // AUDIT TRAIL RELATIONSHIPS
+            // =============================================
+
+            // Student audit trail relationships
+            modelBuilder.Entity<Student>()
+                .HasOne(s => s.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(s => s.CreatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<Student>()
+                .HasOne(s => s.UpdatedByUser)
+                .WithMany()
+                .HasForeignKey(s => s.UpdatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // Grade audit trail relationships
+            modelBuilder.Entity<Grade>()
+                .HasOne(g => g.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(g => g.CreatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<Grade>()
+                .HasOne(g => g.UpdatedByUser)
+                .WithMany()
+                .HasForeignKey(g => g.UpdatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // Teacher audit trail relationships
+            modelBuilder.Entity<Teacher>()
+                .HasOne(t => t.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(t => t.CreatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<Teacher>()
+                .HasOne(t => t.UpdatedByUser)
+                .WithMany()
+                .HasForeignKey(t => t.UpdatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // Book audit trail relationships
+            modelBuilder.Entity<Book>()
+                .HasOne(b => b.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(b => b.CreatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<Book>()
+                .HasOne(b => b.UpdatedByUser)
+                .WithMany()
+                .HasForeignKey(b => b.UpdatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // Additional audit trail relationships for other entities
+            modelBuilder.Entity<EmailTemplate>()
+                .HasOne(et => et.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(et => et.CreatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<EmailTemplate>()
+                .HasOne(et => et.UpdatedByUser)
+                .WithMany()
+                .HasForeignKey(et => et.UpdatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<StudentExamination>()
+                .HasOne(se => se.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(se => se.CreatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<StudentExamination>()
+                .HasOne(se => se.UpdatedByUser)
+                .WithMany()
+                .HasForeignKey(se => se.UpdatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<StudentBilling>()
+                .HasOne(sb => sb.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(sb => sb.CreatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<StudentBilling>()
+                .HasOne(sb => sb.UpdatedByUser)
+                .WithMany()
+                .HasForeignKey(sb => sb.UpdatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<TeacherPayroll>()
+                .HasOne(tp => tp.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(tp => tp.CreatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<TeacherPayroll>()
+                .HasOne(tp => tp.UpdatedByUser)
+                .WithMany()
+                .HasForeignKey(tp => tp.UpdatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<BookRequisition>()
+                .HasOne(br => br.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(br => br.CreatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<BookRequisition>()
+                .HasOne(br => br.UpdatedByUser)
+                .WithMany()
+                .HasForeignKey(br => br.UpdatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // StudentGradeHistory audit trail
+            modelBuilder.Entity<StudentGradeHistory>()
+                .HasOne(sgh => sgh.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(sgh => sgh.CreatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
 
             // =============================================
             // INDEXES for performance
