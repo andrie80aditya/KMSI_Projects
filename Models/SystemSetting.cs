@@ -66,7 +66,6 @@ namespace KMSI_Projects.Models
         /// <summary>
         /// User who last updated this setting
         /// </summary>
-        [InverseProperty("UpdatedSystemSettings")]
         public virtual User? UpdatedByUser { get; set; }
 
         // Computed Properties (Not Mapped)

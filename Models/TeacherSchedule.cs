@@ -58,7 +58,6 @@ namespace KMSI_Projects.Models
         /// <summary>
         /// User who created this schedule record
         /// </summary>
-        [InverseProperty("CreatedTeacherSchedules")]
         public virtual User? CreatedByUser { get; set; }
 
         // Computed Properties (Not Mapped)

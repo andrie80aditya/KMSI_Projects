@@ -164,13 +164,11 @@ namespace KMSI_Projects.Models
         /// <summary>
         /// User who created this payroll record
         /// </summary>
-        [InverseProperty("CreatedTeacherPayrolls")]
         public virtual User? CreatedByUser { get; set; }
 
         /// <summary>
         /// User who last updated this payroll record
         /// </summary>
-        [InverseProperty("UpdatedTeacherPayrolls")]
         public virtual User? UpdatedByUser { get; set; }
 
         // Computed Properties (Not Mapped)

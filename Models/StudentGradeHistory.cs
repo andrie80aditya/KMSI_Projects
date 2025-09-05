@@ -79,7 +79,6 @@ namespace KMSI_Projects.Models
         /// <summary>
         /// User who created this grade history record
         /// </summary>
-        [InverseProperty("CreatedStudentGradeHistories")]
         public virtual User? CreatedByUser { get; set; }
 
         // Computed Properties (Not Mapped)

@@ -122,7 +122,6 @@ namespace KMSI_Projects.Models
         /// <summary>
         /// User who created this stock movement record
         /// </summary>
-        [InverseProperty("CreatedStockMovements")]
         public virtual User? CreatedByUser { get; set; }
 
         // Computed Properties (Not Mapped)

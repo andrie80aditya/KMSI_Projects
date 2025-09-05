@@ -193,13 +193,11 @@ namespace KMSI_Projects.Models
         /// <summary>
         /// User who created this billing record
         /// </summary>
-        [InverseProperty("CreatedStudentBillings")]
         public virtual User? CreatedByUser { get; set; }
 
         /// <summary>
         /// User who last updated this billing record
         /// </summary>
-        [InverseProperty("UpdatedStudentBillings")]
         public virtual User? UpdatedByUser { get; set; }
 
         // Computed Properties (Not Mapped)

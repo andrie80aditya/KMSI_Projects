@@ -213,13 +213,11 @@ namespace KMSI_Projects.Models
         /// <summary>
         /// User who created this student record
         /// </summary>
-        [InverseProperty("CreatedStudents")]
         public virtual User? CreatedByUser { get; set; }
 
         /// <summary>
         /// User who last updated this student record
         /// </summary>
-        [InverseProperty("UpdatedStudents")]
         public virtual User? UpdatedByUser { get; set; }
 
         // Computed Properties (Not Mapped)

@@ -125,13 +125,11 @@ namespace KMSI_Projects.Models
         /// <summary>
         /// User who created this grade record
         /// </summary>
-        [InverseProperty("CreatedGrades")]
         public virtual User? CreatedByUser { get; set; }
 
         /// <summary>
         /// User who last updated this grade record
         /// </summary>
-        [InverseProperty("UpdatedGrades")]
         public virtual User? UpdatedByUser { get; set; }
 
         // Computed Properties (Not Mapped)

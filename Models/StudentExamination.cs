@@ -124,13 +124,11 @@ namespace KMSI_Projects.Models
         /// <summary>
         /// User who created this examination record
         /// </summary>
-        [InverseProperty("CreatedStudentExaminations")]
         public virtual User? CreatedByUser { get; set; }
 
         /// <summary>
         /// User who last updated this examination record
         /// </summary>
-        [InverseProperty("UpdatedStudentExaminations")]
         public virtual User? UpdatedByUser { get; set; }
 
         // Computed Properties (Not Mapped)

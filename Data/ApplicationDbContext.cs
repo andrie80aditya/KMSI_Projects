@@ -62,14 +62,14 @@ namespace KMSI_Projects.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // Configure Company self-referencing relationship
+            // Company self-referencing relationship
             modelBuilder.Entity<Company>()
                 .HasOne(c => c.ParentCompany)
                 .WithMany(c => c.ChildCompanies)
                 .HasForeignKey(c => c.ParentCompanyId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Configure User relationships to avoid cycles
+            // User business relationships - prevent cascading deletes
             modelBuilder.Entity<User>()
                 .HasOne(u => u.Company)
                 .WithMany(c => c.Users)
@@ -77,77 +77,62 @@ namespace KMSI_Projects.Data
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<User>()
-                .HasOne(u => u.Site)
-                .WithMany()
-                .HasForeignKey(u => u.SiteId)
+                .HasOne(u => u.UserLevel)
+                .WithMany(ul => ul.Users)
+                .HasForeignKey(u => u.UserLevelId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Configure Teacher relationships
-            modelBuilder.Entity<Teacher>()
-                .HasOne(t => t.User)
-                .WithOne()
-                .HasForeignKey<Teacher>(t => t.UserId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            // Configure Student relationships
-            modelBuilder.Entity<Student>()
+            // Site relationship
+            modelBuilder.Entity<Site>()
                 .HasOne(s => s.Company)
-                .WithMany(c => c.Students)
+                .WithMany(c => c.Sites)
                 .HasForeignKey(s => s.CompanyId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Configure GradeBook composite key
-            modelBuilder.Entity<GradeBook>()
-                .HasIndex(gb => new { gb.GradeId, gb.BookId })
+            // =============================================
+            // INDEXES for performance
+            // =============================================
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Username)
                 .IsUnique();
 
-            // Configure decimal properties
-            modelBuilder.Entity<TeacherPayroll>()
-                .Property(tp => tp.HourlyRate)
-                .HasPrecision(18, 2);
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Email)
+                .IsUnique();
 
-            modelBuilder.Entity<TeacherPayroll>()
-                .Property(tp => tp.NetSalary)
-                .HasPrecision(18, 2);
+            modelBuilder.Entity<Company>()
+                .HasIndex(c => c.CompanyCode)
+                .IsUnique();
 
-            modelBuilder.Entity<StudentBilling>()
-                .Property(sb => sb.TotalAmount)
-                .HasPrecision(18, 2);
-
-            // Configure audit triggers and constraints
-            modelBuilder.Entity<AuditLog>()
-                .HasIndex(al => new { al.CompanyId, al.ActionDate });
-
-            // Seed initial data
+            // =============================================
+            // SEED DATA
+            // =============================================
             SeedData(modelBuilder);
         }
 
         private void SeedData(ModelBuilder modelBuilder)
         {
-            // Seed Head Office Company
+            // Seed User Levels
+            var userLevels = UserLevel.CreateDefaultLevels();
+            for (int i = 0; i < userLevels.Count; i++)
+            {
+                userLevels[i].UserLevelId = i + 1;
+            }
+            modelBuilder.Entity<UserLevel>().HasData(userLevels);
+
+            // Seed Default Company
             modelBuilder.Entity<Company>().HasData(
                 new Company
                 {
                     CompanyId = 1,
                     CompanyCode = "KMI",
                     CompanyName = "Kawai Music School Indonesia",
+                    Address = "Jakarta Head Office",
+                    City = "Jakarta",
+                    Province = "DKI Jakarta",
+                    Phone = "021-12345678",
+                    Email = "info@kmsi.co.id",
                     IsHeadOffice = true,
-                    IsActive = true,
-                    CreatedDate = DateTime.Now
-                }
-            );
-
-            // Seed Default User
-            modelBuilder.Entity<User>().HasData(
-                new User
-                {
-                    UserId = 1,
-                    CompanyId = 1,
-                    Username = "admin",
-                    Email = "admin@kawaimusic.id",
-                    FirstName = "System",
-                    LastName = "Administrator",
-                    UserLevelId = 1,
                     IsActive = true,
                     CreatedDate = DateTime.Now
                 }
