@@ -1,0 +1,510 @@
+﻿@model KMSI_Projects.Models.ViewModels.DashboardViewModel
+
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="h3 mb-0">
+            <i class="fas fa-tachometer-alt me-2 text-primary"></i>Dashboard
+        </h1>
+        <p class="text-muted">Welcome back, @User.Identity.Name</p>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Total Students
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.TotalStudents</div>
+                        <div class="text-xs text-success">
+                            <i class="fas fa-arrow-up me-1"></i>@Model.ActiveStudents Active
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-user-graduate fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Total Teachers
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.TotalTeachers</div>
+                        <div class="text-xs text-success">
+                            <i class="fas fa-arrow-up me-1"></i>@Model.ActiveTeachers Active
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-chalkboard-teacher fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Total Sites
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.TotalSites</div>
+                        <div class="text-xs text-info">
+                            <i class="fas fa-map-marker-alt me-1"></i>Locations
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-building fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Monthly Revenue
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.MonthlyRevenue.ToString("C")</div>
+                        <div class="text-xs text-warning">
+                            <i class="fas fa-calendar me-1"></i>This Month
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts and Recent Activities -->
+<div class="row">
+    <!-- Recent Activities -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-clock me-2"></i>Recent Activities
+                </h6>
+                <div class="dropdown no-arrow">
+                    <a class="dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in">
+                        <div class="dropdown-header">Options:</div>
+                        <a class="dropdown-item" href="#">View All</a>
+                        <a class="dropdown-item" href="#">Refresh</a>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                @if (Model.RecentActivities.Any())
+                {
+                    <div class="list-group list-group-flush">
+                        @foreach (var activity in Model.RecentActivities)
+                        {
+                            <div class="list-group-item list-group-item-action border-0 p-0 mb-3">
+                                <div class="d-flex w-100 align-items-center">
+                                    <div class="me-3">
+                                        <div class="icon-circle bg-@activity.Color">
+                                            <i class="@activity.Icon text-white"></i>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h6 class="mb-1">@activity.Type</h6>
+                                            <small class="text-muted">@activity.Date.ToString("MMM dd, HH:mm")</small>
+                                        </div>
+                                        <p class="mb-1 small">@activity.Description</p>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-4">
+                        <i class="fas fa-clock fa-3x text-gray-300 mb-3"></i>
+                        <p class="text-muted">No recent activities</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-bolt me-2"></i>Quick Actions
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <a href="@Url.Action("Create", "Student")" class="btn btn-outline-primary w-100 py-3">
+                            <i class="fas fa-user-plus fa-2x mb-2"></i><br>
+                            <small>New Student</small>
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="@Url.Action("Create", "Teacher")" class="btn btn-outline-success w-100 py-3">
+                            <i class="fas fa-chalkboard-teacher fa-2x mb-2"></i><br>
+                            <small>New Teacher</small>
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="@Url.Action("Create", "ClassSchedule")" class="btn btn-outline-info w-100 py-3">
+                            <i class="fas fa-calendar-plus fa-2x mb-2"></i><br>
+                            <small>Schedule Class</small>
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="@Url.Action("Create", "Examination")" class="btn btn-outline-warning w-100 py-3">
+                            <i class="fas fa-clipboard-check fa-2x mb-2"></i><br>
+                            <small>New Exam</small>
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="@Url.Action("Index", "StudentBilling")" class="btn btn-outline-danger w-100 py-3">
+                            <i class="fas fa-file-invoice-dollar fa-2x mb-2"></i><br>
+                            <small>Billing</small>
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="@Url.Action("Index", "BookRequisition")" class="btn btn-outline-secondary w-100 py-3">
+                            <i class="fas fa-boxes fa-2x mb-2"></i><br>
+                            <small>Stock Request</small>
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="@Url.Action("Index", "Inventory")" class="btn btn-outline-dark w-100 py-3">
+                            <i class="fas fa-warehouse fa-2x mb-2"></i><br>
+                            <small>Inventory</small>
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="@Url.Action("Index", "AuditLog")" class="btn btn-outline-info w-100 py-3">
+                            <i class="fas fa-history fa-2x mb-2"></i><br>
+                            <small>Audit Log</small>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Additional Info Cards -->
+<div class="row">
+    <div class="col-lg-4 mb-4">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Pending Items
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col">
+                        <div class="h4 mb-0 text-warning">@Model.PendingExaminations</div>
+                        <div class="small text-muted">Pending Exams</div>
+                    </div>
+                </div>
+                <hr>
+                <div class="text-center">
+                    <a href="@Url.Action("Index", "Examination")" class="btn btn-sm btn-outline-primary">
+                        View Details <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4 mb-4">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-calendar-day me-2"></i>Today's Schedule
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="text-center py-3">
+                    <i class="fas fa-calendar-check fa-3x text-gray-300 mb-3"></i>
+                    <p class="text-muted small">Schedule overview will be displayed here</p>
+                    <a href="@Url.Action("Index", "ClassSchedule")" class="btn btn-sm btn-outline-info">
+                        View Schedule <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4 mb-4">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-chart-line me-2"></i>Performance
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="text-center py-3">
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="h5 mb-0 text-success">95%</div>
+                            <div class="small text-muted">Attendance</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="h5 mb-0 text-info">87%</div>
+                            <div class="small text-muted">Pass Rate</div>
+                        </div>
+                    </div>
+                    <hr>
+                    <a href="#" class="btn btn-sm btn-outline-primary">
+                        View Reports <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- System Information Footer -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center justify-content-center">
+                            <i class="fas fa-server me-2 text-primary"></i>
+                            <div>
+                                <div class="small text-muted">System Status</div>
+                                <div class="font-weight-bold text-success">Online</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center justify-content-center">
+                            <i class="fas fa-database me-2 text-info"></i>
+                            <div>
+                                <div class="small text-muted">Database</div>
+                                <div class="font-weight-bold text-success">Connected</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center justify-content-center">
+                            <i class="fas fa-clock me-2 text-warning"></i>
+                            <div>
+                                <div class="small text-muted">Last Updated</div>
+                                <div class="font-weight-bold">@DateTime.Now.ToString("HH:mm")</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center justify-content-center">
+                            <i class="fas fa-code-branch me-2 text-secondary"></i>
+                            <div>
+                                <div class="small text-muted">Version</div>
+                                <div class="font-weight-bold">1.0.0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Initialize tooltips
+            $('[data-bs-toggle="tooltip"]').tooltip();
+
+            // Auto-refresh dashboard every 5 minutes
+            setTimeout(function() {
+                location.reload();
+            }, 300000);
+
+            // Add hover effects to cards
+            $('.card').hover(
+                function() {
+                    $(this).addClass('shadow-lg');
+                },
+                function() {
+                    $(this).removeClass('shadow-lg');
+                }
+            );
+
+            // Real-time clock update
+            function updateClock() {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('en-US', {
+                    hour12: false,
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                $('.font-weight-bold:contains("' + '@DateTime.Now.ToString("HH:mm")' + '")').text(timeString);
+            }
+
+            // Update clock every minute
+            setInterval(updateClock, 60000);
+        });
+
+        // Function to refresh specific dashboard sections
+        function refreshDashboardData() {
+            // This can be implemented to refresh data via AJAX
+            console.log('Refreshing dashboard data...');
+        }
+    </script>
+}
+
+<style>
+    .border-left-primary {
+        border-left: .25rem solid #4e73df !important;
+    }
+
+    .border-left-success {
+        border-left: .25rem solid #1cc88a !important;
+    }
+
+    .border-left-info {
+        border-left: .25rem solid #36b9cc !important;
+    }
+
+    .border-left-warning {
+        border-left: .25rem solid #f6c23e !important;
+    }
+
+    .icon-circle {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .bg-primary {
+        background-color: #4e73df !important;
+    }
+
+    .bg-success {
+        background-color: #1cc88a !important;
+    }
+
+    .bg-info {
+        background-color: #36b9cc !important;
+    }
+
+    .bg-warning {
+        background-color: #f6c23e !important;
+    }
+
+    .bg-danger {
+        background-color: #e74a3b !important;
+    }
+
+    .bg-secondary {
+        background-color: #858796 !important;
+    }
+
+    .card {
+        transition: all 0.3s ease;
+        border: none;
+    }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175) !important;
+        }
+
+    .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        transition: all 0.2s ease;
+    }
+
+    .text-gray-300 {
+        color: #dddfeb !important;
+    }
+
+    .text-gray-800 {
+        color: #5a5c69 !important;
+    }
+
+    .font-weight-bold {
+        font-weight: 700 !important;
+    }
+
+    .text-xs {
+        font-size: 0.7rem;
+    }
+
+    .animated--fade-in {
+        animation: fadeIn 0.15s ease-in;
+    }
+
+    @@keyframes fadeIn {
+        0% {
+            opacity: 0;
+        }
+
+        100% {
+            opacity: 1;
+        }
+    }
+
+    .no-gutters {
+        margin-right: 0;
+        margin-left: 0;
+    }
+
+        .no-gutters > .col,
+        .no-gutters > [class*="col-"] {
+            padding-right: 0;
+            padding-left: 0;
+        }
+
+    /* Responsive adjustments */
+    @@media (max-width: 768px) {
+        .h5 {
+            font-size: 1rem;
+        }
+
+        .fa-2x {
+            font-size: 1.5em;
+        }
+
+        .btn {
+            font-size: 0.8rem;
+        }
+    }
+</style>

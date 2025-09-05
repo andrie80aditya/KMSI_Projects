@@ -1,0 +1,328 @@
+﻿@model KMSI_Projects.Models.ViewModels.LoginViewModel
+
+@{
+    ViewData["Title"] = "Login";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - KMSI Course Management</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .login-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .login-body {
+            padding: 2rem;
+        }
+
+        .form-control {
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            padding: 12px 15px;
+            transition: all 0.3s ease;
+        }
+
+            .form-control:focus {
+                border-color: #667eea;
+                box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+            }
+
+        .btn-login {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 12px 30px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+            .btn-login:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            }
+
+        .input-group-text {
+            background: transparent;
+            border: 2px solid #e9ecef;
+            border-right: none;
+            border-radius: 10px 0 0 10px;
+        }
+
+        .input-group .form-control {
+            border-left: none;
+            border-radius: 0;
+        }
+
+        .input-group .btn {
+            border-left: none;
+            border-radius: 0 10px 10px 0;
+            border: 2px solid #e9ecef;
+            border-left: none;
+        }
+
+        .input-group:focus-within .input-group-text,
+        .input-group:focus-within .btn {
+            border-color: #667eea;
+        }
+
+        /* Custom checkbox - force standard HTML checkbox */
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+            .checkbox-wrapper input[type="checkbox"] {
+                width: 18px;
+                height: 18px;
+                margin-right: 10px;
+                cursor: pointer;
+                transform: scale(1.2);
+                accent-color: #667eea;
+            }
+
+            .checkbox-wrapper label {
+                cursor: pointer;
+                margin-bottom: 0;
+                user-select: none;
+            }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="mb-3">
+                    <i class="fas fa-music fa-3x"></i>
+                </div>
+                <h3 class="mb-0">KMSI Course Management</h3>
+                <p class="mb-0">Kawai Music School Indonesia</p>
+            </div>
+
+            <div class="login-body">
+                <form method="post" action="@Url.Action("Login", "Account")" id="loginForm">
+                    @Html.AntiForgeryToken()
+
+                    @if (!string.IsNullOrEmpty(ViewBag.ReturnUrl as string))
+                    {
+                        <input type="hidden" name="ReturnUrl" value="@ViewBag.ReturnUrl" />
+                    }
+
+                    <!-- Validation Summary -->
+                    @if (!ViewData.ModelState.IsValid && ViewData.ModelState.ErrorCount > 0)
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <ul class="mb-0">
+                                @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                                {
+                                    <li>@error.ErrorMessage</li>
+                                }
+                            </ul>
+                        </div>
+                    }
+
+                    <div class="mb-3">
+                        <label for="loginUsername" class="form-label">
+                            <i class="fas fa-user me-1"></i>Username
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-user"></i>
+                            </span>
+                            <input type="text"
+                                   class="form-control"
+                                   id="loginUsername"
+                                   name="Username"
+                                   value="@(Model?.Username ?? "")"
+                                   placeholder="Enter your username"
+                                   required
+                                   autofocus
+                                   autocomplete="username" />
+                        </div>
+                        @Html.ValidationMessageFor(m => m.Username, "", new { @class = "text-danger small" })
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="loginPassword" class="form-label">
+                            <i class="fas fa-lock me-1"></i>Password
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            <input type="password"
+                                   class="form-control"
+                                   id="loginPassword"
+                                   name="Password"
+                                   value=""
+                                   placeholder="Enter your password"
+                                   required
+                                   autocomplete="current-password" />
+                            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
+                                <i class="fas fa-eye" id="toggleIcon"></i>
+                            </button>
+                        </div>
+                        @Html.ValidationMessageFor(m => m.Password, "", new { @class = "text-danger small" })
+                    </div>
+
+                    <div class="checkbox-wrapper">
+                        <input type="checkbox"
+                               id="loginRememberMe"
+                               name="RememberMe"
+                               value="true"
+                        @(Model?.RememberMe == true ? "checked" : "") />
+                        <input type="hidden" name="RememberMe" value="false" />
+                        <label for="loginRememberMe">Remember me</label>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-login" id="loginSubmit">
+                            <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                        </button>
+                    </div>
+                </form>
+
+                <hr class="my-4">
+
+                <div class="text-center">
+                    <small class="text-muted">
+                        <i class="fas fa-shield-alt me-1"></i>
+                        Secure Login System
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Default Admin Credentials Info -->
+    <div class="position-fixed bottom-0 end-0 m-3">
+        <div class="card" style="max-width: 300px;">
+            <div class="card-header bg-info text-white">
+                <small><i class="fas fa-info-circle me-1"></i>Default Login</small>
+            </div>
+            <div class="card-body p-2">
+                <small>
+                    <strong>Username:</strong> admin<br>
+                    <strong>Password:</strong> admin123<br>
+                    <em class="text-muted">Change after first login</em>
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        function togglePassword() {
+            const passwordInput = document.getElementById('loginPassword');
+            const toggleIcon = document.getElementById('toggleIcon');
+
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.className = 'fas fa-eye-slash';
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.className = 'fas fa-eye';
+            }
+        }
+
+        // Form validation and debugging
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('loginForm');
+            const usernameField = document.getElementById('loginUsername');
+            const passwordField = document.getElementById('loginPassword');
+            const rememberField = document.getElementById('loginRememberMe');
+            const submitButton = document.getElementById('loginSubmit');
+
+            // Debug form elements
+            console.log('Form elements found:');
+            console.log('Username field:', usernameField ? 'YES' : 'NO');
+            console.log('Password field:', passwordField ? 'YES' : 'NO');
+            console.log('Remember field:', rememberField ? 'YES' : 'NO');
+            console.log('Submit button:', submitButton ? 'YES' : 'NO');
+
+            form.addEventListener('submit', function(e) {
+                const username = usernameField.value;
+                const password = passwordField.value;
+                const rememberMe = rememberField.checked;
+
+                console.log('=== FORM SUBMISSION DEBUG ===');
+                console.log('Username:', username);
+                console.log('Password length:', password.length);
+                console.log('RememberMe:', rememberMe);
+                console.log('Form action:', form.action);
+                console.log('Form method:', form.method);
+
+                // Basic client-side validation
+                if (!username || username.trim() === '') {
+                    console.error('Username is empty');
+                    alert('Please enter your username');
+                    usernameField.focus();
+                    e.preventDefault();
+                    return false;
+                }
+
+                if (!password || password.trim() === '') {
+                    console.error('Password is empty');
+                    alert('Please enter your password');
+                    passwordField.focus();
+                    e.preventDefault();
+                    return false;
+                }
+
+                console.log('Client-side validation passed, submitting form...');
+
+                // Disable submit button to prevent double submission
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Signing In...';
+            });
+
+            // Auto-hide alerts after 5 seconds
+            setTimeout(function() {
+                const alerts = document.querySelectorAll('.alert');
+                alerts.forEach(alert => {
+                    alert.style.transition = 'opacity 0.5s';
+                    alert.style.opacity = '0';
+                    setTimeout(() => alert.remove(), 500);
+                });
+            }, 5000);
+        });
+    </script>
+</body>
+</html>
