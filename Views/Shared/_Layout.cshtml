@@ -5,327 +5,436 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - KMSI Course Management</title>
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <!-- Custom CSS -->
+    <!-- CSS Libraries - Semua dari CDN -->
+    <!-- Bootstrap 5.3.2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+
+    <!-- Font Awesome 6.4.2 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <!-- DataTables 1.13.6 with Bootstrap 5 -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css">
+
+    <!-- Select2 4.1.0 with Bootstrap 5 theme -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+
+    <!-- SweetAlert2 11.7.32 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
+
+    <!-- DatePicker & TimePicker -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+
+    <!-- Custom Site CSS (file lokal Anda) -->
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 
+    <!-- Custom Inline CSS untuk KMSI -->
     <style>
-        body {
-            background-color: #f8f9fa;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
         .navbar-brand {
-            font-weight: 600;
+            font-weight: 700;
+            font-size: 1.5rem;
         }
 
-        .main-content {
-            min-height: calc(100vh - 160px);
+        .card {
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            border: 1px solid rgba(0, 0, 0, 0.125);
         }
 
-        .dropdown-menu {
-            border: none;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            border-radius: 8px;
+        .btn-group .btn {
+            margin-right: 2px;
         }
 
-        .dropdown-item {
-            padding: 0.5rem 1rem;
-            transition: all 0.2s ease;
+        .table th {
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
         }
 
-            .dropdown-item:hover {
-                background-color: #f8f9fa;
-                color: #007bff;
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .toast-container {
+            z-index: 1060;
+        }
+
+        .sidebar {
+            min-height: 100vh;
+            box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+        }
+
+            .sidebar .nav-link {
+                color: #6c757d;
             }
 
-        .alert {
-            border: none;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                .sidebar .nav-link.active {
+                    color: #0d6efd;
+                    background-color: #e7f1ff;
+                }
+
+                .sidebar .nav-link:hover {
+                    color: #0d6efd;
+                }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+            background: #0d6efd !important;
+            border-color: #0d6efd !important;
         }
 
-        footer {
-            margin-top: auto;
+        .select2-container--bootstrap-5 .select2-selection {
+            border-color: #ced4da;
+        }
+
+        .modal-backdrop {
+            z-index: 1040;
+        }
+
+        .modal {
+            z-index: 1050;
         }
     </style>
 </head>
-<body class="d-flex flex-column min-vh-100">
-    <header>
-        <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
-            <div class="container-fluid">
-                <a class="navbar-brand" href="@Url.Action("Index", "Home")">
-                    <i class="fas fa-music me-2"></i>KMSI Course Management
-                </a>
+<body>
+    <!-- Navigation Header -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-graduation-cap me-2"></i>
+                KMSI Course Management
+            </a>
 
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
 
-                <div class="collapse navbar-collapse" id="navbarNav">
-                    <ul class="navbar-nav me-auto">
-                        @if (User.Identity.IsAuthenticated)
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" href="@Url.Action("Index", "Home")">
-                                    <i class="fas fa-tachometer-alt me-1"></i>Dashboard
-                                </a>
-                            </li>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">
+                            <i class="fas fa-home me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="masterDataDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-database me-1"></i>Master Data
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/Company"><i class="fas fa-building me-2"></i>Company</a></li>
+                            <li><a class="dropdown-item" href="/Site"><i class="fas fa-map-marker-alt me-2"></i>Sites</a></li>
+                            <li><a class="dropdown-item" href="/Teacher"><i class="fas fa-chalkboard-teacher me-2"></i>Teachers</a></li>
+                            <li><a class="dropdown-item" href="/Student"><i class="fas fa-user-graduate me-2"></i>Students</a></li>
+                            <li><a class="dropdown-item" href="/Grade"><i class="fas fa-layer-group me-2"></i>Grades</a></li>
+                            <li><a class="dropdown-item" href="/Book"><i class="fas fa-book me-2"></i>Books</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="operationDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-cogs me-1"></i>Operations
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/Schedule"><i class="fas fa-calendar me-2"></i>Scheduling</a></li>
+                            <li><a class="dropdown-item" href="/Attendance"><i class="fas fa-check-circle me-2"></i>Attendance</a></li>
+                            <li><a class="dropdown-item" href="/Examination"><i class="fas fa-clipboard-check me-2"></i>Examination</a></li>
+                            <li><a class="dropdown-item" href="/Inventory"><i class="fas fa-boxes me-2"></i>Inventory</a></li>
+                            <li><a class="dropdown-item" href="/Billing"><i class="fas fa-file-invoice-dollar me-2"></i>Billing</a></li>
+                        </ul>
+                    </li>
+                </ul>
 
-                            <!-- Master Data Menu -->
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="masterDataDropdown" role="button" data-bs-toggle="dropdown">
-                                    <i class="fas fa-database me-1"></i>Master Data
-                                </a>
-                                <ul class="dropdown-menu">
-                                    <li>
-                                        <a class="dropdown-item" href="@Url.Action("Index", "Company")">
-                                            <i class="fas fa-building me-2"></i>Companies
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item" href="@Url.Action("Index", "Site")">
-                                            <i class="fas fa-map-marker-alt me-2"></i>Sites
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item" href="@Url.Action("Index", "Grade")">
-                                            <i class="fas fa-layer-group me-2"></i>Grades
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item" href="@Url.Action("Index", "Book")">
-                                            <i class="fas fa-book me-2"></i>Books
-                                        </a>
-                                    </li>
-                                </ul>
-                            </li>
-
-                            <!-- Academic Menu -->
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="academicDropdown" role="button" data-bs-toggle="dropdown">
-                                    <i class="fas fa-graduation-cap me-1"></i>Academic
-                                </a>
-                                <ul class="dropdown-menu">
-                                    <li>
-                                        <a class="dropdown-item" href="@Url.Action("Index", "Student")">
-                                            <i class="fas fa-user-graduate me-2"></i>Students
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item" href="@Url.Action("Index", "Teacher")">
-                                            <i class="fas fa-chalkboard-teacher me-2"></i>Teachers
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item" href="@Url.Action("Index", "Registration")">
-                                            <i class="fas fa-user-plus me-2"></i>Enrollments
-                                        </a>
-                                    </li>
-                                </ul>
-                            </li>
-
-                            <!-- Scheduling Menu -->
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="scheduleDropdown" role="button" data-bs-toggle="dropdown">
-                                    <i class="fas fa-calendar me-1"></i>Schedule
-                                </a>
-                                <ul class="dropdown-menu">
-                                    <li>
-                                        <a class="dropdown-item" href="@Url.Action("Index", "ClassSchedule")">
-                                            <i class="fas fa-calendar-alt me-2"></i>Class Schedule
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item" href="@Url.Action("Index", "Attendance")">
-                                            <i class="fas fa-check-square me-2"></i>Attendance
-                                        </a>
-                                    </li>
-                                </ul>
-                            </li>
-
-                            <!-- Finance Menu -->
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="financeDropdown" role="button" data-bs-toggle="dropdown">
-                                    <i class="fas fa-dollar-sign me-1"></i>Finance
-                                </a>
-                                <ul class="dropdown-menu">
-                                    <li>
-                                        <a class="dropdown-item" href="@Url.Action("Index", "StudentBilling")">
-                                            <i class="fas fa-file-invoice-dollar me-2"></i>Student Billing
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item" href="@Url.Action("Index", "TeacherPayroll")">
-                                            <i class="fas fa-money-check-alt me-2"></i>Teacher Payroll
-                                        </a>
-                                    </li>
-                                </ul>
-                            </li>
-
-                            <!-- Examination Menu -->
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="examDropdown" role="button" data-bs-toggle="dropdown">
-                                    <i class="fas fa-clipboard-check me-1"></i>Exam
-                                </a>
-                                <ul class="dropdown-menu">
-                                    <li>
-                                        <a class="dropdown-item" href="@Url.Action("Index", "Examination")">
-                                            <i class="fas fa-file-alt me-2"></i>Examinations
-                                        </a>
-                                    </li>
-                                </ul>
-                            </li>
-                        }
-                    </ul>
-
-                    <ul class="navbar-nav">
-                        @if (User.Identity.IsAuthenticated)
-                        {
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                                    <i class="fas fa-user me-1"></i>@User.Identity.Name
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li>
-                                        <a class="dropdown-item" href="@Url.Action("Profile", "Account")">
-                                            <i class="fas fa-user-circle me-2"></i>Profile
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item" href="@Url.Action("ChangePassword", "Account")">
-                                            <i class="fas fa-key me-2"></i>Change Password
-                                        </a>
-                                    </li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li>
-                                        <form method="post" action="@Url.Action("Logout", "Account")" class="d-inline">
-                                            @Html.AntiForgeryToken()
-                                            <button type="submit" class="dropdown-item text-danger">
-                                                <i class="fas fa-sign-out-alt me-2"></i>Logout
-                                            </button>
-                                        </form>
-                                    </li>
-                                </ul>
-                            </li>
-                        }
-                        else
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" href="@Url.Action("Login", "Account")">
-                                    <i class="fas fa-sign-in-alt me-1"></i>Login
-                                </a>
-                            </li>
-                        }
-                    </ul>
-                </div>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle me-1"></i>Admin
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="/Profile"><i class="fas fa-user me-2"></i>Profile</a></li>
+                            <li><a class="dropdown-item" href="/Settings"><i class="fas fa-cog me-2"></i>Settings</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/Logout"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
             </div>
-        </nav>
-    </header>
+        </div>
+    </nav>
 
-    <main class="main-content flex-grow-1">
-        <!-- Alert Messages -->
-        @if (TempData["SuccessMessage"] != null)
-        {
-            <div class="container-fluid mt-3">
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    <i class="fas fa-check-circle me-2"></i>@TempData["SuccessMessage"]
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            </div>
-        }
-
-        @if (TempData["ErrorMessage"] != null)
-        {
-            <div class="container-fluid mt-3">
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <i class="fas fa-exclamation-circle me-2"></i>@TempData["ErrorMessage"]
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            </div>
-        }
-
-        @if (TempData["WarningMessage"] != null)
-        {
-            <div class="container-fluid mt-3">
-                <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                    <i class="fas fa-exclamation-triangle me-2"></i>@TempData["WarningMessage"]
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            </div>
-        }
-
-        @if (TempData["InfoMessage"] != null)
-        {
-            <div class="container-fluid mt-3">
-                <div class="alert alert-info alert-dismissible fade show" role="alert">
-                    <i class="fas fa-info-circle me-2"></i>@TempData["InfoMessage"]
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            </div>
-        }
-
+    <!-- Main Content -->
+    <main role="main">
         @RenderBody()
     </main>
 
-    <footer class="bg-white border-top py-3 mt-auto">
-        <div class="container-fluid">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <p class="mb-0 text-muted">
-                        &copy; @DateTime.Now.Year - KMSI Course Management System
-                    </p>
-                </div>
-                <div class="col-md-6 text-md-end">
-                    <p class="mb-0 text-muted">
-                        Version 1.0.0 |
-                        <a href="mailto:support@kawaimusic.id" class="text-decoration-none">Support</a>
-                    </p>
-                </div>
-            </div>
+    <!-- Footer -->
+    <footer class="bg-light text-center text-muted py-3 mt-5">
+        <div class="container">
+            <span>&copy; @DateTime.Now.Year - KMSI Course Management System. All rights reserved.</span>
         </div>
     </footer>
 
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
+
+    <!-- JavaScript Libraries - Semua dari CDN -->
+    <!-- jQuery 3.7.1 - HARUS PERTAMA -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <!-- Bootstrap 5.3.2 JS Bundle (includes Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+
+    <!-- DataTables 1.13.6 with extensions -->
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.bootstrap5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+
+    <!-- Select2 4.1.0 -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <!-- SweetAlert2 11.7.32 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
+
+    <!-- Date & Time Picker -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+    <!-- Moment.js for date formatting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/locale/id.min.js"></script>
+
+    <!-- Chart.js for dashboards -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+
+    <!-- Custom Site JavaScript (file lokal Anda) -->
     <script src="~/js/site.js" asp-append-version="true"></script>
 
-    <!-- Custom Scripts -->
+    <!-- Global KMSI JavaScript Utilities -->
     <script>
-        // Auto-hide alerts after 5 seconds
-        document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(function() {
-                const alerts = document.querySelectorAll('.alert:not(.alert-permanent)');
-                alerts.forEach(alert => {
-                    const bsAlert = new bootstrap.Alert(alert);
-                    bsAlert.close();
-                });
-            }, 5000);
+        // Validasi jQuery tersedia
+        if (typeof jQuery === 'undefined') {
+            console.error('jQuery is required but not loaded');
+            alert('System error: jQuery not loaded. Please refresh the page.');
+        }
 
-            // Add loading states to navigation links
-            document.querySelectorAll('.nav-link, .dropdown-item').forEach(link => {
-                link.addEventListener('click', function(e) {
-                    if (this.href && !this.href.includes('#') && !this.classList.contains('dropdown-toggle')) {
-                        // Add loading indicator
-                        const icon = this.querySelector('i');
-                        if (icon && !icon.classList.contains('fa-spin')) {
-                            const originalClass = icon.className;
-                            icon.className = 'fas fa-spinner fa-spin me-2';
-
-                            // Restore original icon after 3 seconds (fallback)
-                            setTimeout(() => {
-                                icon.className = originalClass;
-                            }, 3000);
-                        }
+        // Global utility functions untuk KMSI
+        window.KMSI = window.KMSI || {
+            // Show loading state
+            showLoading: function (element) {
+                if (element) {
+                    element.classList.add('loading');
+                    const btn = element.querySelector('.btn');
+                    if (btn) {
+                        btn.disabled = true;
+                        const originalText = btn.innerHTML;
+                        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Loading...';
+                        btn.dataset.originalText = originalText;
                     }
+                }
+            },
+
+            // Hide loading state
+            hideLoading: function (element) {
+                if (element) {
+                    element.classList.remove('loading');
+                    const btn = element.querySelector('.btn');
+                    if (btn && btn.dataset.originalText) {
+                        btn.disabled = false;
+                        btn.innerHTML = btn.dataset.originalText;
+                        delete btn.dataset.originalText;
+                    }
+                }
+            },
+
+            // Show toast notification dengan Bootstrap
+            showToast: function (message, type = 'info') {
+                const toastHtml = `
+                    <div class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                        <div class="d-flex">
+                            <div class="toast-body">
+                                ${message}
+                            </div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                        </div>
+                    </div>
+                `;
+
+                const container = document.getElementById('toastContainer');
+                container.insertAdjacentHTML('beforeend', toastHtml);
+                const toastElement = container.lastElementChild;
+                const toast = new bootstrap.Toast(toastElement);
+                toast.show();
+
+                // Remove toast element after it's hidden
+                toastElement.addEventListener('hidden.bs.toast', function () {
+                    toastElement.remove();
                 });
+            },
+
+            // SweetAlert wrapper
+            showAlert: function (type, title, text = '') {
+                const config = {
+                    title: title,
+                    text: text,
+                    icon: type,
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#0d6efd'
+                };
+
+                if (type === 'error') {
+                    config.confirmButtonColor = '#dc3545';
+                }
+
+                return Swal.fire(config);
+            },
+
+            // Confirm dialog
+            showConfirm: function (title, text, confirmText = 'Yes', cancelText = 'Cancel') {
+                return Swal.fire({
+                    title: title,
+                    text: text,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#0d6efd',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: confirmText,
+                    cancelButtonText: cancelText
+                });
+            },
+
+            // Format currency Indonesian Rupiah
+            formatCurrency: function (amount) {
+                return new Intl.NumberFormat('id-ID', {
+                    style: 'currency',
+                    currency: 'IDR'
+                }).format(amount);
+            },
+
+            // Format date Indonesian
+            formatDate: function (date) {
+                return moment(date).locale('id').format('DD MMM YYYY');
+            },
+
+            // Format datetime Indonesian
+            formatDateTime: function (date) {
+                return moment(date).locale('id').format('DD MMM YYYY HH:mm');
+            },
+
+            // Initialize Select2 dengan tema Bootstrap 5
+            initSelect2: function (selector, options = {}) {
+                const defaultOptions = {
+                    theme: 'bootstrap-5',
+                    width: '100%',
+                    placeholder: 'Pilih...',
+                    allowClear: true
+                };
+
+                $(selector).select2(Object.assign(defaultOptions, options));
+            },
+
+            // Initialize DataTable dengan konfigurasi default
+            initDataTable: function (selector, options = {}) {
+                const defaultOptions = {
+                    responsive: true,
+                    pageLength: 25,
+                    lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+                    language: {
+                        search: "Pencarian:",
+                        lengthMenu: "Tampilkan _MENU_ data per halaman",
+                        info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+                        infoEmpty: "Menampilkan 0 sampai 0 dari 0 data",
+                        infoFiltered: "(difilter dari _MAX_ total data)",
+                        paginate: {
+                            first: "Pertama",
+                            last: "Terakhir",
+                            next: "Selanjutnya",
+                            previous: "Sebelumnya"
+                        },
+                        emptyTable: "Tidak ada data tersedia",
+                        zeroRecords: "Tidak ada data yang cocok"
+                    },
+                    dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
+                         '<"row"<"col-sm-12"tr>>' +
+                         '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+                    buttons: [
+                        {
+                            extend: 'excel',
+                            text: '<i class="fas fa-file-excel me-1"></i>Excel',
+                            className: 'btn btn-success btn-sm'
+                        },
+                        {
+                            extend: 'pdf',
+                            text: '<i class="fas fa-file-pdf me-1"></i>PDF',
+                            className: 'btn btn-danger btn-sm'
+                        },
+                        {
+                            extend: 'print',
+                            text: '<i class="fas fa-print me-1"></i>Print',
+                            className: 'btn btn-info btn-sm'
+                        }
+                    ]
+                };
+
+                return $(selector).DataTable(Object.assign(defaultOptions, options));
+            }
+        };
+
+        // Global showAlert function untuk backward compatibility
+        window.showAlert = function(type, message) {
+            KMSI.showToast(message, type);
+        };
+
+        // Initialize saat document ready
+        $(document).ready(function() {
+            console.log('KMSI System loaded - jQuery version:', $.fn.jquery);
+
+            // Initialize tooltips
+            $('[data-bs-toggle="tooltip"]').tooltip();
+
+            // Initialize popovers
+            $('[data-bs-toggle="popover"]').popover();
+
+            // Set moment locale to Indonesian
+            if (typeof moment !== 'undefined') {
+                moment.locale('id');
+            }
+
+            // Global AJAX setup
+            $.ajaxSetup({
+                beforeSend: function(xhr, settings) {
+                    // Add loading indicator if needed
+                    if (settings.showLoading !== false) {
+                        // Show global loading if implemented
+                    }
+                },
+                complete: function(xhr, status) {
+                    // Hide loading indicator
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX Error:', {
+                        url: this.url,
+                        status: xhr.status,
+                        error: error
+                    });
+
+                    if (xhr.status === 401) {
+                        window.location.href = '/Login';
+                    } else if (xhr.status === 403) {
+                        KMSI.showAlert('error', 'Access Denied', 'You do not have permission to perform this action.');
+                    } else if (xhr.status >= 500) {
+                        KMSI.showAlert('error', 'Server Error', 'An internal server error occurred. Please try again later.');
+                    }
+                }
             });
         });
     </script>
 
+    <!-- Page-specific scripts -->
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

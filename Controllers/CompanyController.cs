@@ -8,6 +8,7 @@ using System.Security.Claims;
 
 namespace KMSI_Projects.Controllers
 {
+    //Controller For Master Company
     [Authorize]
     public class CompanyController : Controller
     {
