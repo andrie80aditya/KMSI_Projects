@@ -94,9 +94,26 @@
         .modal {
             z-index: 1050;
         }
+
+        /* Environment Indicator */
+        .env-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 9999;
+            font-size: 0.8em;
+            padding: 2px 8px;
+            border-radius: 3px;
+            background-color: #28a745;
+            color: white;
+            display: none;
+        }
     </style>
 </head>
 <body>
+    <!-- Environment Indicator -->
+    <div id="envIndicator" class="env-indicator"></div>
+
     <!-- Navigation Header -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container-fluid">
@@ -175,14 +192,14 @@
     <!-- Toast Container -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
 
-    <!-- JavaScript Libraries - Semua dari CDN -->
-    <!-- jQuery 3.7.1 - HARUS PERTAMA -->
+    <!-- JavaScript Libraries - URUTAN PENTING! -->
+    <!-- 1. jQuery 3.7.1 - HARUS PERTAMA -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-    <!-- Bootstrap 5.3.2 JS Bundle (includes Popper) -->
+    <!-- 2. Bootstrap 5.3.2 JS Bundle (includes Popper) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
 
-    <!-- DataTables 1.13.6 with extensions -->
+    <!-- 3. DataTables 1.13.6 with extensions -->
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
@@ -195,37 +212,146 @@
     <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
 
-    <!-- Select2 4.1.0 -->
+    <!-- 4. Select2 4.1.0 -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
-    <!-- SweetAlert2 11.7.32 -->
+    <!-- 5. SweetAlert2 11.7.32 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
 
-    <!-- Date & Time Picker -->
+    <!-- 6. Date & Time Picker -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
-    <!-- Moment.js for date formatting -->
+    <!-- 7. Moment.js for date formatting -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/locale/id.min.js"></script>
 
-    <!-- Chart.js for dashboards -->
+    <!-- 8. Chart.js for dashboards -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 
-    <!-- Custom Site JavaScript (file lokal Anda) -->
+    <!-- 9. Custom Site JavaScript (file lokal Anda) -->
     <script src="~/js/site.js" asp-append-version="true"></script>
 
-    <!-- Global KMSI JavaScript Utilities -->
+    <!-- 10. Global KMSI JavaScript Utilities - PRODUCTION READY -->
     <script>
+        // ===================================================================
+        // GLOBAL KMSI UTILITIES - FIXED VERSION
+        // ===================================================================
+
         // Validasi jQuery tersedia
         if (typeof jQuery === 'undefined') {
-            console.error('jQuery is required but not loaded');
-            alert('System error: jQuery not loaded. Please refresh the page.');
+            console.error('CRITICAL ERROR: jQuery is required but not loaded');
+            alert('System error: jQuery not loaded. Please refresh the page or contact administrator.');
+        } else {
+            console.log('jQuery loaded successfully, version:', jQuery.fn.jquery);
         }
 
-        // Global utility functions untuk KMSI
-        window.KMSI = window.KMSI || {
-            // Show loading state
-            showLoading: function (element) {
+        // Initialize global KMSI object dengan error handling
+        window.KMSI = window.KMSI || {};
+
+        // Environment detection - FIXED
+        KMSI.Environment = {
+            isDevelopment: function() {
+                try {
+                    return window.location.hostname === 'localhost' ||
+                           window.location.hostname === '127.0.0.1' ||
+                           window.location.hostname.includes('dev') ||
+                           window.location.hostname.includes('test');
+                } catch (error) {
+                    console.error('Error detecting environment:', error);
+                    return false;
+                }
+            },
+
+            isProduction: function() {
+                try {
+                    return !this.isDevelopment();
+                } catch (error) {
+                    console.error('Error detecting production environment:', error);
+                    return true; // Default ke production untuk safety
+                }
+            },
+
+            showIndicator: function() {
+                try {
+                    const indicator = document.getElementById('envIndicator');
+                    if (indicator && this.isDevelopment()) {
+                        indicator.textContent = 'DEV';
+                        indicator.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Error showing environment indicator:', error);
+                }
+            }
+        };
+
+        // Base URL configuration - FIXED
+        KMSI.Config = {
+            _baseUrl: null,
+
+            getBaseUrl: function() {
+                try {
+                    if (this._baseUrl) {
+                        return this._baseUrl;
+                    }
+
+                    const protocol = window.location.protocol;
+                    const host = window.location.host;
+                    const pathArray = window.location.pathname.split('/');
+
+                    let basePath = '';
+                    if (pathArray.length > 1 && pathArray[1] !== '') {
+                        const firstSegment = pathArray[1].toLowerCase();
+                        const controllerNames = ['company', 'site', 'teacher', 'student', 'home', 'account', 'admin'];
+
+                        if (!controllerNames.includes(firstSegment)) {
+                            basePath = '/' + pathArray[1];
+                        }
+                    }
+
+                    this._baseUrl = protocol + '//' + host + basePath;
+                    return this._baseUrl;
+                } catch (error) {
+                    console.error('Error getting base URL:', error);
+                    return window.location.origin; // Fallback
+                }
+            },
+
+            buildUrl: function(relativePath) {
+                try {
+                    const baseUrl = this.getBaseUrl();
+                    if (!relativePath.startsWith('/')) {
+                        relativePath = '/' + relativePath;
+                    }
+                    return baseUrl + relativePath;
+                } catch (error) {
+                    console.error('Error building URL:', error);
+                    return relativePath; // Fallback ke relative path
+                }
+            },
+
+            getAntiForgeryToken: function() {
+                try {
+                    let token = $('input[name="__RequestVerificationToken"]').val();
+
+                    if (!token) {
+                        token = $('meta[name="__RequestVerificationToken"]').attr('content');
+                    }
+
+                    if (!token) {
+                        token = $('meta[name="RequestVerificationToken"]').attr('content');
+                    }
+
+                    return token || '';
+                } catch (error) {
+                    console.error('Error getting anti-forgery token:', error);
+                    return '';
+                }
+            }
+        };
+
+        // Show loading state - FIXED
+        KMSI.showLoading = function(element) {
+            try {
                 if (element) {
                     element.classList.add('loading');
                     const btn = element.querySelector('.btn');
@@ -236,10 +362,14 @@
                         btn.dataset.originalText = originalText;
                     }
                 }
-            },
+            } catch (error) {
+                console.error('Error showing loading:', error);
+            }
+        };
 
-            // Hide loading state
-            hideLoading: function (element) {
+        // Hide loading state - FIXED
+        KMSI.hideLoading = function(element) {
+            try {
                 if (element) {
                     element.classList.remove('loading');
                     const btn = element.querySelector('.btn');
@@ -249,15 +379,36 @@
                         delete btn.dataset.originalText;
                     }
                 }
-            },
+            } catch (error) {
+                console.error('Error hiding loading:', error);
+            }
+        };
 
-            // Show toast notification dengan Bootstrap
-            showToast: function (message, type = 'info') {
+        // Show toast notification - FIXED
+        KMSI.showToast = function(message, type) {
+            try {
+                if (!message) {
+                    console.warn('showToast called without message');
+                    return;
+                }
+
+                type = type || 'info';
+
+                const typeMap = {
+                    'error': 'danger',
+                    'success': 'success',
+                    'warning': 'warning',
+                    'info': 'info',
+                    'danger': 'danger'
+                };
+
+                const bootstrapType = typeMap[type] || 'info';
+
                 const toastHtml = `
-                    <div class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="toast align-items-center text-white bg-${bootstrapType} border-0" role="alert" aria-live="assertive" aria-atomic="true">
                         <div class="d-flex">
                             <div class="toast-body">
-                                ${message}
+                                ${this.escapeHtml(message)}
                             </div>
                             <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
                         </div>
@@ -265,25 +416,61 @@
                 `;
 
                 const container = document.getElementById('toastContainer');
-                container.insertAdjacentHTML('beforeend', toastHtml);
-                const toastElement = container.lastElementChild;
-                const toast = new bootstrap.Toast(toastElement);
-                toast.show();
+                if (container) {
+                    container.insertAdjacentHTML('beforeend', toastHtml);
+                    const toastElement = container.lastElementChild;
 
-                // Remove toast element after it's hidden
-                toastElement.addEventListener('hidden.bs.toast', function () {
-                    toastElement.remove();
-                });
-            },
+                    if (typeof bootstrap !== 'undefined' && bootstrap.Toast) {
+                        const toast = new bootstrap.Toast(toastElement, {
+                            autohide: true,
+                            delay: type === 'error' ? 8000 : 5000
+                        });
+                        toast.show();
 
-            // SweetAlert wrapper
-            showAlert: function (type, title, text = '') {
+                        toastElement.addEventListener('hidden.bs.toast', function () {
+                            toastElement.remove();
+                        });
+                    } else {
+                        console.warn('Bootstrap Toast not available, using fallback');
+                        setTimeout(() => {
+                            if (toastElement && toastElement.parentNode) {
+                                toastElement.remove();
+                            }
+                        }, 5000);
+                    }
+                } else {
+                    console.warn('Toast container not found, using alert fallback');
+                    alert(message);
+                }
+            } catch (error) {
+                console.error('Error showing toast:', error);
+                // Fallback ke alert
+                try {
+                    alert(message);
+                } catch (alertError) {
+                    console.error('Even alert failed:', alertError);
+                }
+            }
+        };
+
+        // SweetAlert wrapper - FIXED
+        KMSI.showAlert = function(type, title, text) {
+            try {
+                text = text || '';
+
+                if (typeof Swal === 'undefined') {
+                    alert(title + (text ? ': ' + text : ''));
+                    return Promise.resolve({isConfirmed: true});
+                }
+
                 const config = {
                     title: title,
                     text: text,
                     icon: type,
                     confirmButtonText: 'OK',
-                    confirmButtonColor: '#0d6efd'
+                    confirmButtonColor: '#0d6efd',
+                    allowOutsideClick: false,
+                    allowEscapeKey: true
                 };
 
                 if (type === 'error') {
@@ -291,10 +478,23 @@
                 }
 
                 return Swal.fire(config);
-            },
+            } catch (error) {
+                console.error('Error showing alert:', error);
+                alert(title + (text ? ': ' + text : ''));
+                return Promise.resolve({isConfirmed: true});
+            }
+        };
 
-            // Confirm dialog
-            showConfirm: function (title, text, confirmText = 'Yes', cancelText = 'Cancel') {
+        // Confirm dialog - FIXED
+        KMSI.showConfirm = function(title, text, confirmText, cancelText) {
+            try {
+                confirmText = confirmText || 'Yes';
+                cancelText = cancelText || 'Cancel';
+
+                if (typeof Swal === 'undefined') {
+                    return Promise.resolve({isConfirmed: confirm(title + (text ? ': ' + text : ''))});
+                }
+
                 return Swal.fire({
                     title: title,
                     text: text,
@@ -303,30 +503,80 @@
                     confirmButtonColor: '#0d6efd',
                     cancelButtonColor: '#6c757d',
                     confirmButtonText: confirmText,
-                    cancelButtonText: cancelText
+                    cancelButtonText: cancelText,
+                    reverseButtons: true,
+                    allowOutsideClick: false
                 });
-            },
+            } catch (error) {
+                console.error('Error showing confirm:', error);
+                return Promise.resolve({isConfirmed: confirm(title + (text ? ': ' + text : ''))});
+            }
+        };
 
-            // Format currency Indonesian Rupiah
-            formatCurrency: function (amount) {
+        // Format currency - FIXED
+        KMSI.formatCurrency = function(amount) {
+            try {
                 return new Intl.NumberFormat('id-ID', {
                     style: 'currency',
-                    currency: 'IDR'
+                    currency: 'IDR',
+                    minimumFractionDigits: 0
                 }).format(amount);
-            },
+            } catch (error) {
+                console.warn('Currency formatting failed, using fallback');
+                return 'Rp ' + (amount || 0).toLocaleString('id-ID');
+            }
+        };
 
-            // Format date Indonesian
-            formatDate: function (date) {
-                return moment(date).locale('id').format('DD MMM YYYY');
-            },
+        // Format date - FIXED
+        KMSI.formatDate = function(date) {
+            try {
+                if (!date) return '-';
 
-            // Format datetime Indonesian
-            formatDateTime: function (date) {
-                return moment(date).locale('id').format('DD MMM YYYY HH:mm');
-            },
+                if (typeof moment !== 'undefined') {
+                    return moment(date).locale('id').format('DD MMM YYYY');
+                } else {
+                    return new Date(date).toLocaleDateString('id-ID');
+                }
+            } catch (error) {
+                console.warn('Date formatting failed, using fallback');
+                try {
+                    return new Date(date).toLocaleDateString();
+                } catch (fallbackError) {
+                    return '-';
+                }
+            }
+        };
 
-            // Initialize Select2 dengan tema Bootstrap 5
-            initSelect2: function (selector, options = {}) {
+        // Format datetime - FIXED
+        KMSI.formatDateTime = function(date) {
+            try {
+                if (!date) return '-';
+
+                if (typeof moment !== 'undefined') {
+                    return moment(date).locale('id').format('DD MMM YYYY HH:mm');
+                } else {
+                    return new Date(date).toLocaleString('id-ID');
+                }
+            } catch (error) {
+                console.warn('DateTime formatting failed, using fallback');
+                try {
+                    return new Date(date).toLocaleString();
+                } catch (fallbackError) {
+                    return '-';
+                }
+            }
+        };
+
+        // Initialize Select2 - FIXED
+        KMSI.initSelect2 = function(selector, options) {
+            try {
+                if (typeof $.fn.select2 === 'undefined') {
+                    console.warn('Select2 not available, skipping initialization');
+                    return;
+                }
+
+                options = options || {};
+
                 const defaultOptions = {
                     theme: 'bootstrap-5',
                     width: '100%',
@@ -335,14 +585,26 @@
                 };
 
                 $(selector).select2(Object.assign(defaultOptions, options));
-            },
+            } catch (error) {
+                console.warn('Select2 initialization failed:', error);
+            }
+        };
 
-            // Initialize DataTable dengan konfigurasi default
-            initDataTable: function (selector, options = {}) {
+        // Initialize DataTable - FIXED
+        KMSI.initDataTable = function(selector, options) {
+            try {
+                if (typeof $.fn.DataTable === 'undefined') {
+                    console.warn('DataTables not available, skipping initialization');
+                    return null;
+                }
+
+                options = options || {};
+
                 const defaultOptions = {
                     responsive: true,
                     pageLength: 25,
                     lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+                    processing: true,
                     language: {
                         search: "Pencarian:",
                         lengthMenu: "Tampilkan _MENU_ data per halaman",
@@ -356,85 +618,251 @@
                             previous: "Sebelumnya"
                         },
                         emptyTable: "Tidak ada data tersedia",
-                        zeroRecords: "Tidak ada data yang cocok"
+                        zeroRecords: "Tidak ada data yang cocok",
+                        processing: "Memproses...",
+                        loadingRecords: "Memuat data..."
                     },
                     dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
                          '<"row"<"col-sm-12"tr>>' +
-                         '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
-                    buttons: [
-                        {
-                            extend: 'excel',
-                            text: '<i class="fas fa-file-excel me-1"></i>Excel',
-                            className: 'btn btn-success btn-sm'
-                        },
-                        {
-                            extend: 'pdf',
-                            text: '<i class="fas fa-file-pdf me-1"></i>PDF',
-                            className: 'btn btn-danger btn-sm'
-                        },
-                        {
-                            extend: 'print',
-                            text: '<i class="fas fa-print me-1"></i>Print',
-                            className: 'btn btn-info btn-sm'
-                        }
-                    ]
+                         '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>'
                 };
 
                 return $(selector).DataTable(Object.assign(defaultOptions, options));
+            } catch (error) {
+                console.error('DataTable initialization failed:', error);
+                return null;
+            }
+        };
+
+        // Escape HTML - FIXED
+        KMSI.escapeHtml = function(text) {
+            try {
+                if (!text) return '';
+
+                const map = {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#039;'
+                };
+                return text.toString().replace(/[&<>"']/g, function(m) { return map[m]; });
+            } catch (error) {
+                console.error('Error escaping HTML:', error);
+                return text || '';
+            }
+        };
+
+        // Error reporting - FIXED
+        KMSI.reportError = function(error, context) {
+            try {
+                context = context || '';
+
+                const errorInfo = {
+                    message: error.message || error,
+                    stack: error.stack,
+                    context: context,
+                    url: window.location.href,
+                    userAgent: navigator.userAgent,
+                    timestamp: new Date().toISOString()
+                };
+
+                console.error('KMSI Error Report:', errorInfo);
+
+                // Di production, bisa kirim ke logging service
+                if (KMSI.Environment && KMSI.Environment.isProduction()) {
+                    // TODO: Send to logging service
+                }
+            } catch (reportError) {
+                console.error('Error reporting failed:', reportError);
             }
         };
 
         // Global showAlert function untuk backward compatibility
         window.showAlert = function(type, message) {
-            KMSI.showToast(message, type);
+            try {
+                KMSI.showToast(message, type);
+            } catch (error) {
+                console.error('showAlert failed:', error);
+                alert(message);
+            }
         };
 
-        // Initialize saat document ready
+        // Initialize saat document ready - FIXED
         $(document).ready(function() {
-            console.log('KMSI System loaded - jQuery version:', $.fn.jquery);
+            try {
+                console.log('=== KMSI System Initializing ===');
+                console.log('jQuery version:', $.fn.jquery);
 
-            // Initialize tooltips
-            $('[data-bs-toggle="tooltip"]').tooltip();
+                // Test environment detection
+                if (KMSI.Environment) {
+                    console.log('Environment:', KMSI.Environment.isDevelopment() ? 'Development' : 'Production');
+                    console.log('Base URL:', KMSI.Config.getBaseUrl());
 
-            // Initialize popovers
-            $('[data-bs-toggle="popover"]').popover();
-
-            // Set moment locale to Indonesian
-            if (typeof moment !== 'undefined') {
-                moment.locale('id');
-            }
-
-            // Global AJAX setup
-            $.ajaxSetup({
-                beforeSend: function(xhr, settings) {
-                    // Add loading indicator if needed
-                    if (settings.showLoading !== false) {
-                        // Show global loading if implemented
-                    }
-                },
-                complete: function(xhr, status) {
-                    // Hide loading indicator
-                },
-                error: function(xhr, status, error) {
-                    console.error('AJAX Error:', {
-                        url: this.url,
-                        status: xhr.status,
-                        error: error
-                    });
-
-                    if (xhr.status === 401) {
-                        window.location.href = '/Login';
-                    } else if (xhr.status === 403) {
-                        KMSI.showAlert('error', 'Access Denied', 'You do not have permission to perform this action.');
-                    } else if (xhr.status >= 500) {
-                        KMSI.showAlert('error', 'Server Error', 'An internal server error occurred. Please try again later.');
-                    }
+                    // Show environment indicator
+                    KMSI.Environment.showIndicator();
+                } else {
+                    console.error('KMSI.Environment not initialized');
                 }
-            });
+
+                // Initialize tooltips
+                if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+                    $('[data-bs-toggle="tooltip"]').tooltip();
+                    $('[data-bs-toggle="popover"]').popover();
+                    console.log('Bootstrap tooltips initialized');
+                } else {
+                    console.warn('Bootstrap not available for tooltips');
+                }
+
+                // Set moment locale to Indonesian
+                if (typeof moment !== 'undefined') {
+                    moment.locale('id');
+                    console.log('Moment.js locale set to Indonesian');
+                }
+
+                // Global AJAX setup
+                $.ajaxSetup({
+                    beforeSend: function(xhr, settings) {
+                        try {
+                            // Add anti-forgery token to POST requests
+                            const token = KMSI.Config.getAntiForgeryToken();
+                            if (token && settings.type === 'POST') {
+                                xhr.setRequestHeader('RequestVerificationToken', token);
+                            }
+
+                            // Add standard headers
+                            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                        } catch (error) {
+                            console.error('Error in AJAX beforeSend:', error);
+                        }
+                    },
+                    timeout: 60000, // 60 second default timeout
+                    error: function(xhr, status, error) {
+                        try {
+                            console.error('Global AJAX Error:', {
+                                url: this.url,
+                                method: this.type,
+                                status: xhr.status,
+                                statusText: xhr.statusText,
+                                error: error
+                            });
+
+                            // Handle common HTTP status codes
+                            if (xhr.status === 401) {
+                                KMSI.showAlert('error', 'Session Expired', 'Your session has expired. Please login again.');
+                                setTimeout(() => {
+                                    window.location.href = '/Account/Login';
+                                }, 2000);
+                            } else if (xhr.status === 403) {
+                                KMSI.showAlert('error', 'Access Denied', 'You do not have permission to perform this action.');
+                            } else if (xhr.status === 404) {
+                                KMSI.showAlert('error', 'Not Found', 'The requested resource was not found.');
+                            } else if (xhr.status >= 500) {
+                                KMSI.showAlert('error', 'Server Error', 'An internal server error occurred. Please try again later.');
+                            } else if (status === 'timeout') {
+                                KMSI.showAlert('error', 'Request Timeout', 'The request took too long to complete. Please try again.');
+                            } else if (xhr.status === 0 && status !== 'abort') {
+                                KMSI.showAlert('error', 'Connection Error', 'Unable to connect to the server. Please check your internet connection.');
+                            }
+                        } catch (errorHandlingError) {
+                            console.error('Error in global AJAX error handler:', errorHandlingError);
+                        }
+                    }
+                });
+
+                // Global error handlers
+                window.addEventListener('error', function(event) {
+                    try {
+                        KMSI.reportError(event.error || new Error(event.message), `File: ${event.filename}, Line: ${event.lineno}`);
+                    } catch (error) {
+                        console.error('Error in global error handler:', error);
+                    }
+                });
+
+                window.addEventListener('unhandledrejection', function(event) {
+                    try {
+                        KMSI.reportError(event.reason, 'Unhandled Promise Rejection');
+                    } catch (error) {
+                        console.error('Error in unhandled rejection handler:', error);
+                    }
+                });
+
+                console.log('=== KMSI System Initialized Successfully ===');
+
+            } catch (error) {
+                console.error('Error initializing KMSI System:', error);
+
+                // Fallback notification
+                try {
+                    alert('System initialization error. Some features may not work properly. Please refresh the page.');
+                } catch (alertError) {
+                    console.error('Even fallback alert failed:', alertError);
+                }
+            }
         });
+
+        // Performance monitoring untuk development
+        if (window.location.hostname === 'localhost') {
+            window.addEventListener('load', function() {
+                setTimeout(() => {
+                    try {
+                        if (performance.timing) {
+                            const loadTime = performance.timing.loadEventEnd - performance.timing.navigationStart;
+                            console.log(`Page load time: ${loadTime}ms`);
+                        }
+                    } catch (error) {
+                        console.error('Performance monitoring error:', error);
+                    }
+                }, 0);
+            });
+
+            // Expose debug utilities untuk development
+            window.KMSI_DEBUG = {
+                config: KMSI.Config,
+                environment: KMSI.Environment,
+                testUrl: function(path) {
+                    console.log('Test URL:', KMSI.Config.buildUrl(path));
+                },
+                testToken: function() {
+                    console.log('Anti-forgery Token:', KMSI.Config.getAntiForgeryToken());
+                },
+                clearCache: function() {
+                    KMSI.Config._baseUrl = null;
+                    console.log('Base URL cache cleared');
+                },
+                testToast: function(message, type) {
+                    KMSI.showToast(message || 'Test message', type || 'info');
+                },
+                testAlert: function(type, title, text) {
+                    KMSI.showAlert(type || 'info', title || 'Test Alert', text || 'This is a test alert');
+                }
+            };
+
+            console.log('Debug utilities available in KMSI_DEBUG object');
+        }
     </script>
 
     <!-- Page-specific scripts -->
     @await RenderSectionAsync("Scripts", required: false)
+
+    <!-- Connection status monitor -->
+    <script>
+        // Monitor connection status
+        try {
+            window.addEventListener('online', function() {
+                if (KMSI && KMSI.Environment && KMSI.Environment.isProduction()) {
+                    KMSI.showToast('Connection restored', 'success');
+                }
+            });
+
+            window.addEventListener('offline', function() {
+                if (KMSI && KMSI.showToast) {
+                    KMSI.showToast('Connection lost. Some features may not work.', 'warning');
+                }
+            });
+        } catch (error) {
+            console.error('Connection monitoring setup failed:', error);
+        }
+    </script>
 </body>
 </html>
