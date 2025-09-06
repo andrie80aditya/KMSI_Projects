@@ -1,409 +1,366 @@
 ﻿using KMSI_Projects.Data;
 using KMSI_Projects.Models;
+using KMSI_Projects.Models.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace KMSI_Projects.Controllers
 {
     [Authorize]
-    public class CompanyController : BaseController
+    public class CompanyController : Controller
     {
+        private readonly ApplicationDbContext _context;
+        private readonly ILogger<CompanyController> _logger;
+
         public CompanyController(ApplicationDbContext context, ILogger<CompanyController> logger)
-            : base(context, logger)
         {
+            _context = context;
+            _logger = logger;
         }
 
         // GET: Company
-        public async Task<IActionResult> Index(int page = 1, int pageSize = 20, string? search = null)
+        public async Task<IActionResult> Index()
         {
             try
             {
-                if (!HasPermission("ViewAll") && !HasPermission("ViewCompany"))
+                var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var currentUser = await _context.Users
+                    .Include(u => u.Company)
+                    .FirstOrDefaultAsync(u => u.UserId == currentUserId);
+
+                if (currentUser == null)
                 {
-                    return UnauthorizedAccess();
+                    return RedirectToAction("Login", "Account");
                 }
 
-                var query = _context.Companies
+                // Get companies based on user's access level
+                var companies = await _context.Companies
                     .Include(c => c.ParentCompany)
-                    .AsQueryable();
-
-                // Apply search filter
-                if (!string.IsNullOrWhiteSpace(search))
-                {
-                    query = query.Where(c => c.CompanyName.Contains(search) || c.CompanyCode.Contains(search));
-                }
-
-                // For non-super admin users, filter by their company hierarchy
-                if (CurrentUserRole != "SuperAdmin")
-                {
-                    query = query.Where(c => c.CompanyId == CurrentCompanyId || c.ParentCompanyId == CurrentCompanyId);
-                }
-
-                var (skip, take) = GetPaginationParameters(page, pageSize);
-                var totalCount = await query.CountAsync();
-
-                var companies = await query
+                    .Where(c => c.CompanyId == currentUser.CompanyId || c.ParentCompanyId == currentUser.CompanyId)
                     .OrderBy(c => c.CompanyName)
-                    .Skip(skip)
-                    .Take(take)
                     .ToListAsync();
 
-                ViewBag.CurrentPage = page;
-                ViewBag.PageSize = pageSize;
-                ViewBag.TotalCount = totalCount;
-                ViewBag.TotalPages = (int)Math.Ceiling((double)totalCount / pageSize);
-                ViewBag.Search = search;
-
+                ViewBag.CurrentCompanyId = currentUser.CompanyId;
                 return View(companies);
             }
             catch (Exception ex)
             {
-                return HandleException(ex, "loading companies");
+                _logger.LogError(ex, "Error loading companies");
+                TempData["ErrorMessage"] = "An error occurred while loading companies.";
+                return RedirectToAction("Index", "Home");
             }
         }
 
         // GET: Company/Details/5
         public async Task<IActionResult> Details(int? id)
         {
-            if (!id.HasValue)
+            if (id == null)
             {
                 return NotFound();
             }
 
-            try
+            var company = await _context.Companies
+                .Include(c => c.ParentCompany)
+                .Include(c => c.Sites)
+                .FirstOrDefaultAsync(m => m.CompanyId == id);
+
+            if (company == null)
             {
-                var company = await _context.Companies
-                    .Include(c => c.ParentCompany)
-                    .Include(c => c.ChildCompanies)
-                    .Include(c => c.Sites)
-                    .Include(c => c.Users)
-                    .FirstOrDefaultAsync(c => c.CompanyId == id);
-
-                if (company == null)
-                {
-                    return NotFound();
-                }
-
-                // Check permissions
-                if (CurrentUserRole != "SuperAdmin" && company.CompanyId != CurrentCompanyId)
-                {
-                    return UnauthorizedAccess();
-                }
-
-                return View(company);
+                return NotFound();
             }
-            catch (Exception ex)
+
+            return Json(new
             {
-                return HandleException(ex, "loading company details");
-            }
+                success = true,
+                data = new
+                {
+                    companyId = company.CompanyId,
+                    parentCompanyId = company.ParentCompanyId,
+                    companyCode = company.CompanyCode,
+                    companyName = company.CompanyName,
+                    address = company.Address,
+                    city = company.City,
+                    province = company.Province,
+                    phone = company.Phone,
+                    email = company.Email,
+                    isHeadOffice = company.IsHeadOffice,
+                    isActive = company.IsActive,
+                    parentCompanyName = company.ParentCompany?.CompanyName,
+                    sitesCount = company.Sites?.Count ?? 0,
+                    createdDate = company.CreatedDate.ToString("dd/MM/yyyy HH:mm"),
+                    updatedDate = company.UpdatedDate?.ToString("dd/MM/yyyy HH:mm")
+                }
+            });
         }
 
         // GET: Company/Create
-        public async Task<IActionResult> Create()
+        public async Task<IActionResult> GetCreateForm()
         {
-            if (!HasPermission("CreateAll") && !HasPermission("CreateCompany"))
+            try
             {
-                return UnauthorizedAccess();
-            }
+                var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var currentUser = await _context.Users.FirstOrDefaultAsync(u => u.UserId == currentUserId);
 
-            await PopulateDropdownsAsync();
-            return View();
+                var parentCompanies = await _context.Companies
+                    .Where(c => c.IsActive && (c.CompanyId == currentUser.CompanyId || c.ParentCompanyId == currentUser.CompanyId))
+                    .Select(c => new { c.CompanyId, c.CompanyName })
+                    .ToListAsync();
+
+                return Json(new
+                {
+                    success = true,
+                    parentCompanies = parentCompanies
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting create form data");
+                return Json(new { success = false, message = "Error loading form data." });
+            }
         }
 
         // POST: Company/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Company company)
+        public async Task<IActionResult> Create([FromBody] CompanyViewModel model)
         {
-            if (!HasPermission("CreateAll") && !HasPermission("CreateCompany"))
-            {
-                return UnauthorizedAccess();
-            }
-
-            if (!IsValidModel())
-            {
-                await PopulateDropdownsAsync();
-                return View(company);
-            }
-
             try
             {
-                // Check if company code already exists
-                if (await _context.Companies.AnyAsync(c => c.CompanyCode == company.CompanyCode))
+                if (ModelState.IsValid)
                 {
-                    ModelState.AddModelError("CompanyCode", "Company code already exists.");
-                    await PopulateDropdownsAsync();
-                    return View(company);
+                    var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+
+                    // Check if company code already exists
+                    var existingCompany = await _context.Companies
+                        .FirstOrDefaultAsync(c => c.CompanyCode == model.CompanyCode);
+
+                    if (existingCompany != null)
+                    {
+                        return Json(new { success = false, message = "Company code already exists." });
+                    }
+
+                    var company = new Company
+                    {
+                        ParentCompanyId = model.ParentCompanyId,
+                        CompanyCode = model.CompanyCode.ToUpper(),
+                        CompanyName = model.CompanyName,
+                        Address = model.Address,
+                        City = model.City,
+                        Province = model.Province,
+                        Phone = model.Phone,
+                        Email = model.Email,
+                        IsHeadOffice = model.IsHeadOffice,
+                        IsActive = model.IsActive,
+                        CreatedBy = currentUserId,
+                        CreatedDate = DateTime.Now
+                    };
+
+                    _context.Companies.Add(company);
+                    await _context.SaveChangesAsync();
+
+                    _logger.LogInformation($"Company {company.CompanyName} created by user {currentUserId}");
+
+                    return Json(new
+                    {
+                        success = true,
+                        message = "Company created successfully.",
+                        data = new
+                        {
+                            companyId = company.CompanyId,
+                            companyCode = company.CompanyCode,
+                            companyName = company.CompanyName
+                        }
+                    });
                 }
 
-                company.CreatedBy = CurrentUserId;
-                company.CreatedDate = DateTime.Now;
-
-                _context.Companies.Add(company);
-                await _context.SaveChangesAsync();
-
-                // Log audit trail
-                await LogAuditAsync("Companies", company.CompanyId, "Insert", null, company);
-
-                SetSuccessMessage($"Company '{company.CompanyName}' created successfully.");
-                return RedirectToAction(nameof(Index));
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
+                return Json(new { success = false, message = "Validation failed.", errors = errors });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating company");
-                SetErrorMessage("An error occurred while creating the company.");
-                await PopulateDropdownsAsync();
-                return View(company);
+                return Json(new { success = false, message = "An error occurred while creating the company." });
             }
         }
 
         // GET: Company/Edit/5
-        public async Task<IActionResult> Edit(int? id)
+        public async Task<IActionResult> GetEditForm(int? id)
         {
-            if (!id.HasValue)
+            if (id == null)
             {
-                return NotFound();
-            }
-
-            if (!HasPermission("UpdateAll") && !HasPermission("UpdateCompany"))
-            {
-                return UnauthorizedAccess();
+                return Json(new { success = false, message = "Company ID is required." });
             }
 
             try
             {
-                var company = await _context.Companies.FindAsync(id);
+                var company = await _context.Companies
+                    .FirstOrDefaultAsync(m => m.CompanyId == id);
 
                 if (company == null)
                 {
-                    return NotFound();
+                    return Json(new { success = false, message = "Company not found." });
                 }
 
-                // Check permissions - users can only edit their own company
-                if (CurrentUserRole != "SuperAdmin" && company.CompanyId != CurrentCompanyId)
+                var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var currentUser = await _context.Users.FirstOrDefaultAsync(u => u.UserId == currentUserId);
+
+                var parentCompanies = await _context.Companies
+                    .Where(c => c.IsActive && c.CompanyId != id &&
+                               (c.CompanyId == currentUser.CompanyId || c.ParentCompanyId == currentUser.CompanyId))
+                    .Select(c => new { c.CompanyId, c.CompanyName })
+                    .ToListAsync();
+
+                return Json(new
                 {
-                    return UnauthorizedAccess();
-                }
-
-                await PopulateDropdownsAsync(company.ParentCompanyId);
-                return View(company);
+                    success = true,
+                    data = new
+                    {
+                        companyId = company.CompanyId,
+                        parentCompanyId = company.ParentCompanyId,
+                        companyCode = company.CompanyCode,
+                        companyName = company.CompanyName,
+                        address = company.Address,
+                        city = company.City,
+                        province = company.Province,
+                        phone = company.Phone,
+                        email = company.Email,
+                        isHeadOffice = company.IsHeadOffice,
+                        isActive = company.IsActive
+                    },
+                    parentCompanies = parentCompanies
+                });
             }
             catch (Exception ex)
             {
-                return HandleException(ex, "loading company for edit");
+                _logger.LogError(ex, "Error getting edit form data for company {CompanyId}", id);
+                return Json(new { success = false, message = "Error loading company data." });
             }
         }
 
         // POST: Company/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, Company company)
+        public async Task<IActionResult> Edit(int id, [FromBody] CompanyViewModel model)
         {
-            if (id != company.CompanyId)
+            if (id != model.CompanyId)
             {
-                return NotFound();
-            }
-
-            if (!HasPermission("UpdateAll") && !HasPermission("UpdateCompany"))
-            {
-                return UnauthorizedAccess();
-            }
-
-            if (!IsValidModel())
-            {
-                await PopulateDropdownsAsync(company.ParentCompanyId);
-                return View(company);
+                return Json(new { success = false, message = "Company ID mismatch." });
             }
 
             try
             {
-                var existingCompany = await _context.Companies.AsNoTracking().FirstOrDefaultAsync(c => c.CompanyId == id);
-
-                if (existingCompany == null)
+                if (ModelState.IsValid)
                 {
-                    return NotFound();
+                    var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+
+                    var company = await _context.Companies.FindAsync(id);
+                    if (company == null)
+                    {
+                        return Json(new { success = false, message = "Company not found." });
+                    }
+
+                    // Check if company code already exists (excluding current company)
+                    var existingCompany = await _context.Companies
+                        .FirstOrDefaultAsync(c => c.CompanyCode == model.CompanyCode && c.CompanyId != id);
+
+                    if (existingCompany != null)
+                    {
+                        return Json(new { success = false, message = "Company code already exists." });
+                    }
+
+                    company.ParentCompanyId = model.ParentCompanyId;
+                    company.CompanyCode = model.CompanyCode.ToUpper();
+                    company.CompanyName = model.CompanyName;
+                    company.Address = model.Address;
+                    company.City = model.City;
+                    company.Province = model.Province;
+                    company.Phone = model.Phone;
+                    company.Email = model.Email;
+                    company.IsHeadOffice = model.IsHeadOffice;
+                    company.IsActive = model.IsActive;
+                    company.UpdatedBy = currentUserId;
+                    company.UpdatedDate = DateTime.Now;
+
+                    _context.Update(company);
+                    await _context.SaveChangesAsync();
+
+                    _logger.LogInformation($"Company {company.CompanyName} updated by user {currentUserId}");
+
+                    return Json(new
+                    {
+                        success = true,
+                        message = "Company updated successfully.",
+                        data = new
+                        {
+                            companyId = company.CompanyId,
+                            companyCode = company.CompanyCode,
+                            companyName = company.CompanyName
+                        }
+                    });
                 }
 
-                // Check permissions
-                if (CurrentUserRole != "SuperAdmin" && existingCompany.CompanyId != CurrentCompanyId)
-                {
-                    return UnauthorizedAccess();
-                }
-
-                // Check if company code already exists (excluding current company)
-                if (await _context.Companies.AnyAsync(c => c.CompanyCode == company.CompanyCode && c.CompanyId != id))
-                {
-                    ModelState.AddModelError("CompanyCode", "Company code already exists.");
-                    await PopulateDropdownsAsync(company.ParentCompanyId);
-                    return View(company);
-                }
-
-                company.UpdatedBy = CurrentUserId;
-                company.UpdatedDate = DateTime.Now;
-                company.CreatedBy = existingCompany.CreatedBy;
-                company.CreatedDate = existingCompany.CreatedDate;
-
-                _context.Update(company);
-                await _context.SaveChangesAsync();
-
-                // Log audit trail
-                await LogAuditAsync("Companies", company.CompanyId, "Update", existingCompany, company);
-
-                SetSuccessMessage($"Company '{company.CompanyName}' updated successfully.");
-                return RedirectToAction(nameof(Index));
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
+                return Json(new { success = false, message = "Validation failed.", errors = errors });
             }
-            catch (DbUpdateConcurrencyException)
+            catch (DbUpdateConcurrencyException ex)
             {
-                if (!await CompanyExistsAsync(company.CompanyId))
-                {
-                    return NotFound();
-                }
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating company");
-                SetErrorMessage("An error occurred while updating the company.");
-                await PopulateDropdownsAsync(company.ParentCompanyId);
-                return View(company);
-            }
-        }
-
-        // GET: Company/Delete/5
-        public async Task<IActionResult> Delete(int? id)
-        {
-            if (!id.HasValue)
-            {
-                return NotFound();
-            }
-
-            if (!HasPermission("DeleteAll") && !HasPermission("DeleteCompany"))
-            {
-                return UnauthorizedAccess();
-            }
-
-            try
-            {
-                var company = await _context.Companies
-                    .Include(c => c.ParentCompany)
-                    .FirstOrDefaultAsync(c => c.CompanyId == id);
-
-                if (company == null)
-                {
-                    return NotFound();
-                }
-
-                // Check permissions
-                if (CurrentUserRole != "SuperAdmin")
-                {
-                    return UnauthorizedAccess();
-                }
-
-                // Check if company has dependencies
-                var hasChildCompanies = await _context.Companies.AnyAsync(c => c.ParentCompanyId == id);
-                var hasSites = await _context.Sites.AnyAsync(s => s.CompanyId == id);
-                var hasUsers = await _context.Users.AnyAsync(u => u.CompanyId == id);
-
-                ViewBag.HasDependencies = hasChildCompanies || hasSites || hasUsers;
-                ViewBag.DependencyMessage = GetDependencyMessage(hasChildCompanies, hasSites, hasUsers);
-
-                return View(company);
+                _logger.LogError(ex, "Concurrency error updating company {CompanyId}", id);
+                return Json(new { success = false, message = "The company was modified by another user. Please refresh and try again." });
             }
             catch (Exception ex)
             {
-                return HandleException(ex, "loading company for deletion");
+                _logger.LogError(ex, "Error updating company {CompanyId}", id);
+                return Json(new { success = false, message = "An error occurred while updating the company." });
             }
         }
 
         // POST: Company/Delete/5
-        [HttpPost, ActionName("Delete")]
+        [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            if (!HasPermission("DeleteAll") && !HasPermission("DeleteCompany"))
-            {
-                return UnauthorizedAccess();
-            }
-
             try
             {
-                var company = await _context.Companies.FindAsync(id);
+                var company = await _context.Companies
+                    .Include(c => c.Sites)
+                    .Include(c => c.Users)
+                    .FirstOrDefaultAsync(c => c.CompanyId == id);
 
                 if (company == null)
                 {
-                    return NotFound();
+                    return Json(new { success = false, message = "Company not found." });
                 }
 
-                // Check permissions
-                if (CurrentUserRole != "SuperAdmin")
+                // Check if company has active sites or users
+                if (company.Sites.Any(s => s.IsActive) || company.Users.Any(u => u.IsActive))
                 {
-                    return UnauthorizedAccess();
+                    return Json(new { success = false, message = "Cannot delete company with active sites or users." });
                 }
 
-                // Check for dependencies
-                var hasChildCompanies = await _context.Companies.AnyAsync(c => c.ParentCompanyId == id);
-                var hasSites = await _context.Sites.AnyAsync(s => s.CompanyId == id);
-                var hasUsers = await _context.Users.AnyAsync(u => u.CompanyId == id);
+                // Soft delete - just deactivate
+                company.IsActive = false;
+                company.UpdatedBy = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                company.UpdatedDate = DateTime.Now;
 
-                if (hasChildCompanies || hasSites || hasUsers)
-                {
-                    SetErrorMessage("Cannot delete company with existing dependencies.");
-                    return RedirectToAction(nameof(Delete), new { id });
-                }
-
-                var companyName = company.CompanyName;
-
-                // Log audit trail before deletion
-                await LogAuditAsync("Companies", company.CompanyId, "Delete", company, null);
-
-                _context.Companies.Remove(company);
+                _context.Update(company);
                 await _context.SaveChangesAsync();
 
-                SetSuccessMessage($"Company '{companyName}' deleted successfully.");
-                return RedirectToAction(nameof(Index));
+                _logger.LogInformation($"Company {company.CompanyName} deactivated by user {company.UpdatedBy}");
+
+                return Json(new { success = true, message = "Company deactivated successfully." });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting company");
-                SetErrorMessage("An error occurred while deleting the company.");
-                return RedirectToAction(nameof(Delete), new { id });
+                _logger.LogError(ex, "Error deleting company {CompanyId}", id);
+                return Json(new { success = false, message = "An error occurred while deleting the company." });
             }
         }
 
-        // Helper methods
-        private async Task PopulateDropdownsAsync(int? selectedParentCompanyId = null)
+        private bool CompanyExists(int id)
         {
-            var companies = await _context.Companies
-                .Where(c => c.IsActive)
-                .OrderBy(c => c.CompanyName)
-                .Select(c => new { c.CompanyId, c.CompanyName })
-                .ToListAsync();
-
-            ViewBag.ParentCompanyId = companies
-                .Select(c => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
-                {
-                    Value = c.CompanyId.ToString(),
-                    Text = c.CompanyName,
-                    Selected = c.CompanyId == selectedParentCompanyId
-                })
-                .ToList();
-        }
-
-        private async Task<bool> CompanyExistsAsync(int id)
-        {
-            return await _context.Companies.AnyAsync(c => c.CompanyId == id);
-        }
-
-        private string GetDependencyMessage(bool hasChildCompanies, bool hasSites, bool hasUsers)
-        {
-            var messages = new List<string>();
-
-            if (hasChildCompanies) messages.Add("child companies");
-            if (hasSites) messages.Add("sites");
-            if (hasUsers) messages.Add("users");
-
-            return $"This company has {string.Join(", ", messages)}. Please remove these dependencies before deleting.";
+            return _context.Companies.Any(e => e.CompanyId == id);
         }
     }
 }

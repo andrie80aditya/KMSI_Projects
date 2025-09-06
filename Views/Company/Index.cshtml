@@ -1,0 +1,547 @@
+﻿@model IEnumerable<KMSI_Projects.Models.Company>
+@{
+    ViewData["Title"] = "Company Master";
+    Layout = "_Layout";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h3 class="card-title mb-0">
+                                <i class="fas fa-building text-primary me-2"></i>
+                                Company Master
+                            </h3>
+                        </div>
+                        <div class="col-auto">
+                            <button type="button" class="btn btn-primary" onclick="openCreateModal()">
+                                <i class="fas fa-plus me-2"></i>Add New Company
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="companyTable">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Company Name</th>
+                                    <th>Parent Company</th>
+                                    <th>City</th>
+                                    <th>Phone</th>
+                                    <th>Head Office</th>
+                                    <th>Status</th>
+                                    <th>Sites</th>
+                                    <th width="150">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var company in Model)
+                                {
+                                    <tr data-company-id="@company.CompanyId">
+                                        <td><strong>@company.CompanyCode</strong></td>
+                                        <td>@company.CompanyName</td>
+                                        <td>@(company.ParentCompany?.CompanyName ?? "-")</td>
+                                        <td>@(company.City ?? "-")</td>
+                                        <td>@(company.Phone ?? "-")</td>
+                                        <td>
+                                            @if (company.IsHeadOffice)
+                                            {
+                                                <span class="badge bg-success">Yes</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">No</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (company.IsActive)
+                                            {
+                                                <span class="badge bg-success">Active</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger">Inactive</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">@(company.Sites?.Count ?? 0)</span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button type="button" class="btn btn-info" onclick="viewDetails(@company.CompanyId)"
+                                                        title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-warning" onclick="openEditModal(@company.CompanyId)"
+                                                        title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-danger" onclick="deleteCompany(@company.CompanyId, '@company.CompanyName')"
+                                                        title="Delete">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Company Form Modal -->
+<div class="modal fade" id="companyModal" tabindex="-1" aria-labelledby="companyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="companyModalLabel">Add New Company</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="companyForm">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <input type="hidden" id="companyId" name="CompanyId" value="0" />
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="parentCompanyId" class="form-label">Parent Company</label>
+                                <select class="form-select" id="parentCompanyId" name="ParentCompanyId">
+                                    <option value="">Select Parent Company (Optional)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="companyCode" class="form-label">Company Code <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="companyCode" name="CompanyCode"
+                                       placeholder="Enter company code" style="text-transform: uppercase;" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="companyName" class="form-label">Company Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="companyName" name="CompanyName"
+                               placeholder="Enter company name" required>
+                        <div class="invalid-feedback"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Address</label>
+                        <textarea class="form-control" id="address" name="Address" rows="3"
+                                  placeholder="Enter company address"></textarea>
+                        <div class="invalid-feedback"></div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="city" class="form-label">City</label>
+                                <input type="text" class="form-control" id="city" name="City"
+                                       placeholder="Enter city">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="province" class="form-label">Province</label>
+                                <input type="text" class="form-control" id="province" name="Province"
+                                       placeholder="Enter province">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">Phone</label>
+                                <input type="tel" class="form-control" id="phone" name="Phone"
+                                       placeholder="Enter phone number">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" name="Email"
+                                       placeholder="Enter email address">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="isHeadOffice" name="IsHeadOffice">
+                                <label class="form-check-label" for="isHeadOffice">
+                                    Is Head Office
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="isActive" name="IsActive" checked>
+                                <label class="form-check-label" for="isActive">
+                                    Is Active
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveButton">
+                        <i class="fas fa-save me-2"></i>Save Company
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Company Details Modal -->
+<div class="modal fade" id="companyDetailsModal" tabindex="-1" aria-labelledby="companyDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="companyDetailsModalLabel">Company Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="companyDetailsContent">
+                <!-- Details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let isEditMode = false;
+
+        $(document).ready(function() {
+            // Initialize DataTable
+            $('#companyTable').DataTable({
+                responsive: true,
+                order: [[1, 'asc']],
+                columnDefs: [
+                    { targets: [8], orderable: false }
+                ]
+            });
+
+            // Company code to uppercase
+            $('#companyCode').on('input', function() {
+                this.value = this.value.toUpperCase();
+            });
+        });
+
+        function openCreateModal() {
+            isEditMode = false;
+            resetForm();
+            $('#companyModalLabel').text('Add New Company');
+            $('#saveButton').html('<i class="fas fa-save me-2"></i>Save Company');
+
+            // Load parent companies
+            loadParentCompanies();
+
+            $('#companyModal').modal('show');
+        }
+
+        function openEditModal(companyId) {
+            isEditMode = true;
+            resetForm();
+            $('#companyModalLabel').text('Edit Company');
+            $('#saveButton').html('<i class="fas fa-save me-2"></i>Update Company');
+
+            // Load company data
+            $.get('/Company/GetEditForm/' + companyId)
+                .done(function(response) {
+                    if (response.success) {
+                        const company = response.data;
+
+                        $('#companyId').val(company.companyId);
+                        $('#companyCode').val(company.companyCode);
+                        $('#companyName').val(company.companyName);
+                        $('#address').val(company.address || '');
+                        $('#city').val(company.city || '');
+                        $('#province').val(company.province || '');
+                        $('#phone').val(company.phone || '');
+                        $('#email').val(company.email || '');
+                        $('#isHeadOffice').prop('checked', company.isHeadOffice);
+                        $('#isActive').prop('checked', company.isActive);
+
+                        // Load parent companies and set selected value
+                        loadParentCompanies(response.parentCompanies, company.parentCompanyId);
+
+                        $('#companyModal').modal('show');
+                    } else {
+                        showAlert('error', response.message);
+                    }
+                })
+                .fail(function() {
+                    showAlert('error', 'Failed to load company data.');
+                });
+        }
+
+        function loadParentCompanies(parentCompanies = null, selectedId = null) {
+            if (parentCompanies) {
+                // Use provided data
+                populateParentCompanies(parentCompanies, selectedId);
+            } else {
+                // Load from server
+                $.get('/Company/GetCreateForm')
+                    .done(function(response) {
+                        if (response.success) {
+                            populateParentCompanies(response.parentCompanies, selectedId);
+                        }
+                    })
+                    .fail(function() {
+                        console.error('Failed to load parent companies');
+                    });
+            }
+        }
+
+        function populateParentCompanies(companies, selectedId = null) {
+            const select = $('#parentCompanyId');
+            select.empty();
+            select.append('<option value="">Select Parent Company (Optional)</option>');
+
+            companies.forEach(function(company) {
+                const option = $('<option></option>')
+                    .attr('value', company.companyId)
+                    .text(company.companyName);
+
+                if (selectedId && company.companyId == selectedId) {
+                    option.attr('selected', 'selected');
+                }
+
+                select.append(option);
+            });
+        }
+
+        function viewDetails(companyId) {
+            $.get('/Company/Details/' + companyId)
+                .done(function(response) {
+                    if (response.success) {
+                        const company = response.data;
+
+                        const detailsHtml = `
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <table class="table table-borderless">
+                                        <tr>
+                                            <td><strong>Company Code:</strong></td>
+                                            <td>${company.companyCode}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Company Name:</strong></td>
+                                            <td>${company.companyName}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Parent Company:</strong></td>
+                                            <td>${company.parentCompanyName || '-'}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>City:</strong></td>
+                                            <td>${company.city || '-'}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Province:</strong></td>
+                                            <td>${company.province || '-'}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div class="col-md-6">
+                                    <table class="table table-borderless">
+                                        <tr>
+                                            <td><strong>Phone:</strong></td>
+                                            <td>${company.phone || '-'}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Email:</strong></td>
+                                            <td>${company.email || '-'}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Head Office:</strong></td>
+                                            <td>${company.isHeadOffice ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-secondary">No</span>'}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Status:</strong></td>
+                                            <td>${company.isActive ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-danger">Inactive</span>'}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Sites Count:</strong></td>
+                                            <td><span class="badge bg-info">${company.sitesCount}</span></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                            ${company.address ? `
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <strong>Address:</strong><br>
+                                    <p class="text-muted">${company.address}</p>
+                                </div>
+                            </div>
+                            ` : ''}
+                            <div class="row mt-3">
+                                <div class="col-md-6">
+                                    <small class="text-muted">
+                                        <strong>Created:</strong> ${company.createdDate}
+                                    </small>
+                                </div>
+                                <div class="col-md-6">
+                                    <small class="text-muted">
+                                        <strong>Updated:</strong> ${company.updatedDate || 'Never'}
+                                    </small>
+                                </div>
+                            </div>
+                        `;
+
+                        $('#companyDetailsContent').html(detailsHtml);
+                        $('#companyDetailsModal').modal('show');
+                    } else {
+                        showAlert('error', response.message);
+                    }
+                })
+                .fail(function() {
+                    showAlert('error', 'Failed to load company details.');
+                });
+        }
+
+        function deleteCompany(companyId, companyName) {
+            if (confirm(`Are you sure you want to delete company "${companyName}"?\n\nThis action cannot be undone.`)) {
+                $.post('/Company/Delete/' + companyId, {
+                    __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                })
+                .done(function(response) {
+                    if (response.success) {
+                        showAlert('success', response.message);
+                        setTimeout(function() {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        showAlert('error', response.message);
+                    }
+                })
+                .fail(function() {
+                    showAlert('error', 'Failed to delete company.');
+                });
+            }
+        }
+
+        $('#companyForm').on('submit', function(e) {
+            e.preventDefault();
+
+            const formData = {
+                CompanyId: parseInt($('#companyId').val()) || 0,
+                ParentCompanyId: $('#parentCompanyId').val() ? parseInt($('#parentCompanyId').val()) : null,
+                CompanyCode: $('#companyCode').val(),
+                CompanyName: $('#companyName').val(),
+                Address: $('#address').val(),
+                City: $('#city').val(),
+                Province: $('#province').val(),
+                Phone: $('#phone').val(),
+                Email: $('#email').val(),
+                IsHeadOffice: $('#isHeadOffice').is(':checked'),
+                IsActive: $('#isActive').is(':checked')
+            };
+
+            const url = isEditMode ? '/Company/Edit/' + formData.CompanyId : '/Company/Create';
+            const method = 'POST';
+
+            // Clear previous validation errors
+            $('.is-invalid').removeClass('is-invalid');
+            $('.invalid-feedback').text('');
+
+            $.ajax({
+                url: url,
+                method: method,
+                data: JSON.stringify(formData),
+                contentType: 'application/json',
+                headers: {
+                    'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                }
+            })
+            .done(function(response) {
+                if (response.success) {
+                    $('#companyModal').modal('hide');
+                    showAlert('success', response.message);
+                    setTimeout(function() {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    if (response.errors) {
+                        // Handle validation errors
+                        response.errors.forEach(function(error) {
+                            showAlert('error', error);
+                        });
+                    } else {
+                        showAlert('error', response.message);
+                    }
+                }
+            })
+            .fail(function(xhr) {
+                if (xhr.status === 400 && xhr.responseJSON) {
+                    const errors = xhr.responseJSON.errors;
+                    if (errors) {
+                        Object.keys(errors).forEach(function(field) {
+                            const input = $(`[name="${field}"]`);
+                            input.addClass('is-invalid');
+                            input.siblings('.invalid-feedback').text(errors[field][0]);
+                        });
+                    }
+                } else {
+                    showAlert('error', 'An error occurred while saving the company.');
+                }
+            });
+        });
+
+        function resetForm() {
+            $('#companyForm')[0].reset();
+            $('#companyId').val('0');
+            $('#isActive').prop('checked', true);
+            $('.is-invalid').removeClass('is-invalid');
+            $('.invalid-feedback').text('');
+        }
+
+        function showAlert(type, message) {
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+            const icon = type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
+
+            const alertHtml = `
+                <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                    <i class="${icon} me-2"></i>
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+
+            // Remove existing alerts
+            $('.alert').remove();
+
+            // Add new alert at the top of the page
+            $('body').prepend(alertHtml);
+
+            // Auto dismiss after 5 seconds
+            setTimeout(function() {
+                $('.alert').alert('close');
+            }, 5000);
+        }
+    </script>
+}
