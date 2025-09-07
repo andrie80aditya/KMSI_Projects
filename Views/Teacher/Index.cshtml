@@ -1,0 +1,793 @@
+﻿@model IEnumerable<KMSI_Projects.Models.Teacher>
+
+@{
+    ViewData["Title"] = "Master Teacher";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="content-wrapper">
+    <!-- Content Header -->
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 class="m-0">Master Teacher</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")">Home</a></li>
+                        <li class="breadcrumb-item active">Master Teacher</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main content -->
+    <section class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    <h3 class="card-title">
+                                        <i class="fas fa-chalkboard-teacher me-2"></i>Teacher Management
+                                    </h3>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="float-end">
+                                        <button type="button" class="btn btn-primary" onclick="openCreateModal()">
+                                            <i class="fas fa-plus me-2"></i>Add New Teacher
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table id="teacherTable" class="table table-bordered table-striped table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th width="10%">Teacher Code</th>
+                                            <th width="20%">Teacher Name</th>
+                                            <th width="15%">Company</th>
+                                            <th width="15%">Site</th>
+                                            <th width="15%">Specialization</th>
+                                            <th width="10%">Experience</th>
+                                            <th width="10%">Status</th>
+                                            <th width="5%">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var teacher in Model)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <span class="fw-bold text-primary">@teacher.TeacherCode</span>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar-sm me-2">
+                                                            <div class="avatar-title rounded-circle bg-primary text-white">
+                                                                @(teacher.User?.FullName?.FirstOrDefault().ToString().ToUpper() ?? "T")
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <div class="fw-semibold">@teacher.User?.FullName</div>
+                                                            <small class="text-muted">@teacher.User?.Email</small>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span class="fw-semibold">@teacher.Company?.CompanyName</span>
+                                                </td>
+                                                <td>
+                                                    <span class="fw-semibold">@teacher.Site?.SiteName</span>
+                                                </td>
+                                                <td>
+                                                    <span class="text-info">@(teacher.Specialization ?? "Not Specified")</span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-info">
+                                                        @(teacher.ExperienceYears?.ToString() ?? "0") years
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    @if (teacher.IsActive)
+                                                    {
+                                                        <span class="badge bg-success">Active</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-danger">Inactive</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    <div class="btn-group" role="group">
+                                                        <button type="button" class="btn btn-sm btn-outline-info"
+                                                                onclick="viewDetails(@teacher.TeacherId)"
+                                                                title="View Details">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-outline-warning"
+                                                                onclick="openEditModal(@teacher.TeacherId)"
+                                                                title="Edit">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                                onclick="deleteTeacher(@teacher.TeacherId, '@teacher.TeacherCode')"
+                                                                title="Delete">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- Create/Edit Teacher Modal -->
+<div class="modal fade" id="teacherModal" tabindex="-1" aria-labelledby="teacherModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="teacherModalLabel">Add New Teacher</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="teacherForm">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <input type="hidden" id="teacherId" value="0" />
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="userId" class="form-label">User <span class="text-danger">*</span></label>
+                            <select class="form-select" id="userId" name="UserId" required>
+                                <option value="">Select User</option>
+                            </select>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="teacherCode" class="form-label">Teacher Code <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="teacherCode" name="TeacherCode"
+                                   placeholder="e.g., TCH-001" maxlength="20" required style="text-transform: uppercase;">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="companyId" class="form-label">Company <span class="text-danger">*</span></label>
+                            <select class="form-select" id="companyId" name="CompanyId" required>
+                                <option value="">Select Company</option>
+                            </select>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="siteId" class="form-label">Site <span class="text-danger">*</span></label>
+                            <select class="form-select" id="siteId" name="SiteId" required>
+                                <option value="">Select Site</option>
+                            </select>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="specialization" class="form-label">Specialization</label>
+                            <input type="text" class="form-control" id="specialization" name="Specialization"
+                                   placeholder="e.g., Piano, Guitar, Violin" maxlength="100">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="experienceYears" class="form-label">Experience (Years)</label>
+                            <input type="number" class="form-control" id="experienceYears" name="ExperienceYears"
+                                   min="0" max="50" placeholder="0">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="hourlyRate" class="form-label">Hourly Rate</label>
+                            <div class="input-group">
+                                <span class="input-group-text">Rp</span>
+                                <input type="number" class="form-control" id="hourlyRate" name="HourlyRate"
+                                       min="0" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="maxStudentsPerDay" class="form-label">Max Students Per Day <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="maxStudentsPerDay" name="MaxStudentsPerDay"
+                                   min="1" max="20" value="8" required>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="isAvailableForTrial" name="IsAvailableForTrial" checked>
+                                <label class="form-check-label" for="isAvailableForTrial">
+                                    Available for Trial Classes
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="isActive" name="IsActive" checked>
+                                <label class="form-check-label" for="isActive">
+                                    Active
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveButton">
+                        <i class="fas fa-save me-2"></i>Save Teacher
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailsModalLabel">Teacher Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="detailsContent">
+                <!-- Details content will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // ===================================================================
+        // PRODUCTION-READY JAVASCRIPT untuk KMSI Teacher Module
+        // ===================================================================
+
+        // Extend existing KMSI object (sudah didefinisikan di _Layout.cshtml)
+        KMSI.Config = KMSI.Config || {
+            // Otomatis detect base URL dari current location
+            getBaseUrl: function() {
+                const protocol = window.location.protocol;
+                const host = window.location.host;
+                const pathArray = window.location.pathname.split('/');
+
+                // Jika ada virtual directory (IIS deployment)
+                let basePath = '';
+                if (pathArray.length > 1 && pathArray[1] !== '') {
+                    // Check if first path segment is likely a virtual directory
+                    const firstSegment = pathArray[1].toLowerCase();
+                    if (!['teacher', 'company', 'site', 'student', 'home'].includes(firstSegment)) {
+                        basePath = '/' + pathArray[1];
+                    }
+                }
+
+                return protocol + '//' + host + basePath;
+            },
+
+            // Build complete URL for API calls
+            buildUrl: function(relativePath) {
+                const baseUrl = this.getBaseUrl();
+                // Ensure relativePath starts with /
+                if (!relativePath.startsWith('/')) {
+                    relativePath = '/' + relativePath;
+                }
+                return baseUrl + relativePath;
+            },
+
+            // Get anti-forgery token
+            getAntiForgeryToken: function() {
+                return $('input[name="__RequestVerificationToken"]').val() ||
+                       $('meta[name="__RequestVerificationToken"]').attr('content') ||
+                       '';
+            }
+        };
+
+        // Teacher Module dengan production-ready AJAX calls (mengikuti pola Company/Site)
+        KMSI.Teacher = {
+            // Initialize module
+            init: function() {
+                this.isEditMode = false;
+                this.teacherTable = null;
+                this.bindEvents();
+                this.initializeDataTable();
+            },
+
+            // Bind event handlers
+            bindEvents: function() {
+                const self = this;
+
+                // Teacher code to uppercase
+                $(document).on('input', '#teacherCode', function() {
+                    this.value = this.value.toUpperCase();
+                });
+
+                // Company change to load sites
+                $(document).on('change', '#companyId', function() {
+                    self.loadSites($(this).val());
+                });
+
+                // Form submission
+                $(document).on('submit', '#teacherForm', function(e) {
+                    e.preventDefault();
+                    self.submitForm();
+                });
+
+                // Modal events
+                $('#teacherModal').on('hidden.bs.modal', function() {
+                    self.resetForm();
+                });
+            },
+
+            // Initialize DataTable
+            initializeDataTable: function() {
+                try {
+                    if ($.fn.DataTable && $('#teacherTable').length) {
+                        this.teacherTable = KMSI.initDataTable('#teacherTable', {
+                            order: [[1, 'asc']], // Sort by teacher name
+                            columnDefs: [
+                                { targets: [7], orderable: false } // Actions column not sortable
+                            ]
+                        });
+                        console.log('Teacher DataTable initialized successfully');
+                    }
+                } catch (error) {
+                    console.error('Error initializing DataTable:', error);
+                    KMSI.showToast('Error initializing table. Some features may not work properly.', 'error');
+                }
+            },
+
+            // Open create modal
+            openCreateModal: function() {
+                try {
+                    this.isEditMode = false;
+                    $('#teacherModalLabel').text('Add New Teacher');
+                    this.resetForm();
+                    this.loadCreateFormData();
+                } catch (error) {
+                    console.error('Error opening create modal:', error);
+                    KMSI.showToast('Error opening form.', 'error');
+                }
+            },
+
+            // Load create form data
+            loadCreateFormData: function() {
+                const self = this;
+
+                $.get(KMSI.Config.buildUrl('/Teacher/GetCreateForm'))
+                    .done(function(response) {
+                        if (response.success) {
+                            // Populate users dropdown
+                            $('#userId').empty().append('<option value="">Select User</option>');
+                            $.each(response.users, function(index, user) {
+                                $('#userId').append($('<option></option>').val(user.userId).text(user.fullName + ' (' + user.email + ')'));
+                            });
+
+                            // Populate companies dropdown
+                            $('#companyId').empty().append('<option value="">Select Company</option>');
+                            $.each(response.companies, function(index, company) {
+                                $('#companyId').append($('<option></option>').val(company.companyId).text(company.companyName));
+                            });
+
+                            $('#teacherModal').modal('show');
+                        } else {
+                            KMSI.showToast(response.message || 'Failed to load form data', 'error');
+                        }
+                    })
+                    .fail(function(xhr) {
+                        console.error('Error loading create form data:', xhr);
+                        KMSI.showToast('Failed to load form data', 'error');
+                    });
+            },
+
+            // Open edit modal
+            openEditModal: function(id) {
+                try {
+                    this.isEditMode = true;
+                    $('#teacherModalLabel').text('Edit Teacher');
+                    this.resetForm();
+                    this.loadEditFormData(id);
+                } catch (error) {
+                    console.error('Error opening edit modal:', error);
+                    KMSI.showToast('Error opening form.', 'error');
+                }
+            },
+
+            // Load edit form data
+            loadEditFormData: function(id) {
+                const self = this;
+
+                $.get(KMSI.Config.buildUrl('/Teacher/GetEditForm/' + id))
+                    .done(function(response) {
+                        if (response.success) {
+                            const teacher = response.data;
+
+                            // Populate form fields
+                            $('#teacherId').val(teacher.teacherId);
+                            $('#teacherCode').val(teacher.teacherCode);
+                            $('#specialization').val(teacher.specialization);
+                            $('#experienceYears').val(teacher.experienceYears);
+                            $('#hourlyRate').val(teacher.hourlyRate);
+                            $('#maxStudentsPerDay').val(teacher.maxStudentsPerDay);
+                            $('#isAvailableForTrial').prop('checked', teacher.isAvailableForTrial);
+                            $('#isActive').prop('checked', teacher.isActive);
+
+                            // Populate users dropdown
+                            $('#userId').empty().append('<option value="">Select User</option>');
+                            $.each(response.users, function(index, user) {
+                                $('#userId').append($('<option></option>').val(user.userId).text(user.fullName + ' (' + user.email + ')'));
+                            });
+                            $('#userId').val(teacher.userId);
+
+                            // Populate companies dropdown
+                            $('#companyId').empty().append('<option value="">Select Company</option>');
+                            $.each(response.companies, function(index, company) {
+                                $('#companyId').append($('<option></option>').val(company.companyId).text(company.companyName));
+                            });
+                            $('#companyId').val(teacher.companyId);
+
+                            // Populate sites dropdown
+                            $('#siteId').empty().append('<option value="">Select Site</option>');
+                            $.each(response.sites, function(index, site) {
+                                $('#siteId').append($('<option></option>').val(site.siteId).text(site.siteName));
+                            });
+                            $('#siteId').val(teacher.siteId);
+
+                            $('#teacherModal').modal('show');
+                        } else {
+                            KMSI.showToast(response.message || 'Failed to load teacher data', 'error');
+                        }
+                    })
+                    .fail(function(xhr) {
+                        console.error('Error loading edit form data:', xhr);
+                        KMSI.showToast('Failed to load teacher data', 'error');
+                    });
+            },
+
+            // Submit form (Create or Edit)
+            submitForm: function() {
+                const self = this;
+                const form = $('#teacherForm');
+                const saveButton = $('#saveButton');
+
+                try {
+                    // Disable submit button and show loading
+                    saveButton.prop('disabled', true);
+                    KMSI.showLoading(form[0]);
+
+                    // Prepare form data
+                    const formData = {
+                        TeacherId: parseInt($('#teacherId').val()) || 0,
+                        UserId: parseInt($('#userId').val()),
+                        CompanyId: parseInt($('#companyId').val()),
+                        SiteId: parseInt($('#siteId').val()),
+                        TeacherCode: $('#teacherCode').val().trim(),
+                        Specialization: $('#specialization').val().trim() || null,
+                        ExperienceYears: parseInt($('#experienceYears').val()) || null,
+                        HourlyRate: parseFloat($('#hourlyRate').val()) || null,
+                        MaxStudentsPerDay: parseInt($('#maxStudentsPerDay').val()),
+                        IsAvailableForTrial: $('#isAvailableForTrial').is(':checked'),
+                        IsActive: $('#isActive').is(':checked')
+                    };
+
+                    console.log('Submitting teacher data:', formData);
+
+                    // Determine URL based on mode
+                    const url = this.isEditMode ?
+                        KMSI.Config.buildUrl('/Teacher/Edit/' + formData.TeacherId) :
+                        KMSI.Config.buildUrl('/Teacher/Create');
+
+                    // Submit via AJAX
+                    $.ajax({
+                        url: url,
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify(formData),
+                        headers: {
+                            'RequestVerificationToken': KMSI.Config.getAntiForgeryToken()
+                        }
+                    })
+                    .done(function(response) {
+                        console.log('Teacher save response:', response);
+
+                        if (response.success) {
+                            $('#teacherModal').modal('hide');
+                            KMSI.showToast(response.message || 'Teacher saved successfully', 'success');
+
+                            // Reload page after short delay
+                            setTimeout(() => {
+                                location.reload();
+                            }, 1500);
+                        } else {
+                            if (response.errors && Array.isArray(response.errors)) {
+                                response.errors.forEach(error => {
+                                    KMSI.showToast(error, 'error');
+                                });
+                            } else {
+                                KMSI.showToast(response.message || 'Failed to save teacher', 'error');
+                            }
+                        }
+                    })
+                    .fail(function(xhr) {
+                        console.error('Error saving teacher:', xhr);
+                        let message = 'Error saving teacher. ';
+
+                        if (xhr.status === 401) {
+                            message = 'Session expired. Please login again.';
+                            setTimeout(() => window.location.href = '/Login', 2000);
+                        } else if (xhr.status === 403) {
+                            message = 'You do not have permission to perform this action.';
+                        } else if (xhr.status >= 500) {
+                            message += 'Server error occurred. Please try again later.';
+                        } else {
+                            message += 'Please check your connection and try again.';
+                        }
+
+                        KMSI.showToast(message, 'error');
+                    })
+                    .always(function() {
+                        // Restore button state
+                        saveButton.prop('disabled', false);
+                        KMSI.hideLoading(form[0]);
+                    });
+
+                } catch (error) {
+                    console.error('Error submitting form:', error);
+                    KMSI.showToast('Error submitting form. Please try again.', 'error');
+                    saveButton.prop('disabled', false);
+                    KMSI.hideLoading(form[0]);
+                }
+            },
+
+            // Delete teacher
+            deleteTeacher: function(id, code) {
+                const self = this;
+
+                if (confirm(`Are you sure you want to delete teacher "${code}"?\n\nThis action cannot be undone.`)) {
+                    $.ajax({
+                        url: KMSI.Config.buildUrl('/Teacher/Delete/' + id),
+                        type: 'POST',
+                        headers: {
+                            'RequestVerificationToken': KMSI.Config.getAntiForgeryToken()
+                        }
+                    })
+                    .done(function(response) {
+                        if (response.success) {
+                            KMSI.showToast(response.message || 'Teacher deleted successfully', 'success');
+                            setTimeout(() => {
+                                location.reload();
+                            }, 1500);
+                        } else {
+                            KMSI.showToast(response.message || 'Failed to delete teacher', 'error');
+                        }
+                    })
+                    .fail(function(xhr) {
+                        console.error('Error deleting teacher:', xhr);
+                        KMSI.showToast('Failed to delete teacher', 'error');
+                    });
+                }
+            },
+
+            // View teacher details
+            viewDetails: function(id) {
+                $.get(KMSI.Config.buildUrl('/Teacher/Details/' + id))
+                    .done(function(response) {
+                        if (response.success) {
+                            const teacher = response.data;
+                            const content = `
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <table class="table table-borderless">
+                                            <tr><th>Teacher Code:</th><td class="fw-bold text-primary">${teacher.teacherCode}</td></tr>
+                                            <tr><th>Teacher Name:</th><td>${teacher.userName}</td></tr>
+                                            <tr><th>Email:</th><td>${teacher.userEmail || 'Not provided'}</td></tr>
+                                            <tr><th>Phone:</th><td>${teacher.userPhone || 'Not provided'}</td></tr>
+                                            <tr><th>Company:</th><td>${teacher.companyName}</td></tr>
+                                            <tr><th>Site:</th><td>${teacher.siteName}</td></tr>
+                                            <tr><th>Specialization:</th><td>${teacher.specialization || 'Not specified'}</td></tr>
+                                        </table>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <table class="table table-borderless">
+                                            <tr><th>Experience:</th><td><span class="badge bg-info">${teacher.experienceLevelDisplay}</span></td></tr>
+                                            <tr><th>Hourly Rate:</th><td class="fw-bold text-success">${teacher.hourlyRateDisplay}</td></tr>
+                                            <tr><th>Max Students/Day:</th><td>${teacher.maxStudentsPerDay}</td></tr>
+                                            <tr><th>Trial Available:</th><td><span class="badge ${teacher.isAvailableForTrial ? 'bg-success' : 'bg-warning'}">${teacher.trialAvailabilityDisplay}</span></td></tr>
+                                            <tr><th>Status:</th><td><span class="badge ${teacher.isActive ? 'bg-success' : 'bg-danger'}">${teacher.statusDisplay}</span></td></tr>
+                                        </table>
+                                    </div>
+                                </div>
+                                <hr>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <small class="text-muted">
+                                            <strong>Created:</strong> ${teacher.createdDate}
+                                        </small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <small class="text-muted">
+                                            ${teacher.updatedDate ? '<strong>Updated:</strong> ' + teacher.updatedDate : ''}
+                                        </small>
+                                    </div>
+                                </div>
+                            `;
+                            $('#detailsContent').html(content);
+                            $('#detailsModal').modal('show');
+                        } else {
+                            KMSI.showToast(response.message || 'Failed to load teacher details', 'error');
+                        }
+                    })
+                    .fail(function(xhr) {
+                        console.error('Error loading teacher details:', xhr);
+                        KMSI.showToast('Failed to load teacher details', 'error');
+                    });
+            },
+
+            // Load sites by company
+            loadSites: function(companyId) {
+                $('#siteId').empty().append('<option value="">Select Site</option>');
+
+                if (companyId) {
+                    $.get(KMSI.Config.buildUrl('/Teacher/GetSitesByCompany/' + companyId))
+                        .done(function(response) {
+                            if (response.success) {
+                                $.each(response.sites, function(index, site) {
+                                    $('#siteId').append($('<option></option>').val(site.siteId).text(site.siteName));
+                                });
+                            }
+                        })
+                        .fail(function(xhr) {
+                            console.error('Error loading sites:', xhr);
+                        });
+                }
+            },
+
+            // Reset form
+            resetForm: function() {
+                try {
+                    $('#teacherForm')[0].reset();
+                    $('#teacherId').val('0');
+                    $('.is-invalid').removeClass('is-invalid');
+                    $('.invalid-feedback').text('');
+                    $('#isAvailableForTrial').prop('checked', true);
+                    $('#isActive').prop('checked', true);
+                    $('#maxStudentsPerDay').val(8);
+                } catch (error) {
+                    console.error('Error resetting form:', error);
+                }
+            }
+        };
+
+        // Global functions untuk backward compatibility
+        function openCreateModal() {
+            KMSI.Teacher.openCreateModal();
+        }
+
+        function openEditModal(teacherId) {
+            KMSI.Teacher.openEditModal(teacherId);
+        }
+
+        function viewDetails(teacherId) {
+            KMSI.Teacher.viewDetails(teacherId);
+        }
+
+        function deleteTeacher(teacherId, teacherCode) {
+            KMSI.Teacher.deleteTeacher(teacherId, teacherCode);
+        }
+
+        // Initialize ketika document ready
+        $(document).ready(function() {
+            try {
+                KMSI.Teacher.init();
+                console.log('KMSI Teacher module initialized - Environment:', KMSI.Config.getBaseUrl());
+            } catch (error) {
+                console.error('Error initializing KMSI Teacher module:', error);
+                KMSI.showToast('Error initializing page. Please refresh and try again.', 'error');
+            }
+        });
+
+        // Development/Debug helpers (remove in production)
+        if (window.location.hostname === 'localhost') {
+            window.KMSI_DEBUG = {
+                config: KMSI.Config,
+                teacher: KMSI.Teacher,
+                testUrl: function(path) {
+                    console.log('Test URL:', KMSI.Config.buildUrl(path));
+                }
+            };
+        }
+    </script>
+
+    <style>
+        .avatar-sm {
+            width: 32px;
+            height: 32px;
+        }
+
+        .avatar-title {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .table th {
+            font-weight: 600;
+            background-color: #f8f9fa;
+        }
+
+        .btn-group .btn {
+            margin-right: 2px;
+        }
+
+            .btn-group .btn:last-child {
+                margin-right: 0;
+            }
+
+        .card-title i {
+            color: #007bff;
+        }
+
+        .modal-lg {
+            max-width: 900px;
+        }
+
+        .form-label {
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .text-danger {
+            color: #dc3545 !important;
+        }
+
+        .badge {
+            font-size: 0.75em;
+        }
+
+        .table-borderless th {
+            border: none;
+            padding: 0.5rem 0.75rem;
+            font-weight: 600;
+            width: 40%;
+        }
+
+        .table-borderless td {
+            border: none;
+            padding: 0.5rem 0.75rem;
+        }
+
+        .input-group-text {
+            background-color: #e9ecef;
+            border-color: #ced4da;
+        }
+    </style>
+}
