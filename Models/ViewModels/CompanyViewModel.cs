@@ -37,12 +37,12 @@ namespace KMSI_Projects.Models.ViewModels
         public string? Province { get; set; }
 
         [StringLength(20, ErrorMessage = "Phone number cannot exceed 20 characters")]
-        [Phone(ErrorMessage = "Please enter a valid phone number")]
+        //[Phone(ErrorMessage = "Please enter a valid phone number")]
         [Display(Name = "Phone")]
         public string? Phone { get; set; }
 
         [StringLength(100, ErrorMessage = "Email cannot exceed 100 characters")]
-        [EmailAddress(ErrorMessage = "Please enter a valid email address")]
+        //[EmailAddress(ErrorMessage = "Please enter a valid email address")]
         [Display(Name = "Email")]
         public string? Email { get; set; }
 
