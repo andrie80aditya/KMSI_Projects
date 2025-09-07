@@ -427,9 +427,8 @@
                     // Show loading state
                     const form = document.getElementById('companyForm'); // id form di modal
                     const saveButton = $('#saveButton');
-                    const originalText = saveButton.html();
-                    saveButton.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Saving...');
-
+                    saveButton.prop('disabled', true);
+                    
                     $.ajax({
                         url: url,
                         method: 'POST',
@@ -481,7 +480,7 @@
                     })
                     .always(function() {
                         // Restore button state
-                        saveButton.prop('disabled', false).html(originalText);
+                        saveButton.prop('disabled', false);
                         KMSI.hideLoading(form); // 🔑 ini yang memulihkan input modal
                     });
                 } catch (error) {
