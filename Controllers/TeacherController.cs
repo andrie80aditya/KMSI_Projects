@@ -1,10 +1,10 @@
 ﻿using KMSI_Projects.Data;
-using KMSI_Projects.Models.ViewModels;
 using KMSI_Projects.Models;
+using KMSI_Projects.Models.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace KMSI_Projects.Controllers
 {
@@ -39,7 +39,7 @@ namespace KMSI_Projects.Controllers
                     return RedirectToAction("Login", "Account");
                 }
 
-                // Get teachers based on user's access level - PERSIS SEPERTI COMPANY DAN SITE
+                // Get teachers based on user's access level - mengikuti pola Site
                 var teachers = await _context.Teachers
                     .Include(t => t.User)
                     .Include(t => t.Company)
@@ -80,44 +80,31 @@ namespace KMSI_Projects.Controllers
                     return Json(new { success = false, message = "Teacher not found." });
                 }
 
-                var teacherDetails = new
+                var viewModel = new TeacherDetailsViewModel
                 {
-                    teacherId = teacher.TeacherId,
-                    companyName = teacher.Company.CompanyName,
-                    siteName = teacher.Site.SiteName,
-                    teacherCode = teacher.TeacherCode,
-                    userName = teacher.User.FullName,
-                    userEmail = teacher.User.Email,
-                    userPhone = teacher.User.Phone,
-                    specialization = teacher.Specialization,
-                    experienceYears = teacher.ExperienceYears,
-                    hourlyRate = teacher.HourlyRate,
-                    maxStudentsPerDay = teacher.MaxStudentsPerDay,
-                    isAvailableForTrial = teacher.IsAvailableForTrial,
-                    isActive = teacher.IsActive,
-                    statusDisplay = teacher.IsActive ? "Active" : "Inactive",
-                    hourlyRateDisplay = teacher.HourlyRate?.ToString("C") ?? "Not Set",
-                    experienceLevelDisplay = teacher.ExperienceYears switch
-                    {
-                        null => "Not Specified",
-                        0 => "Fresh Graduate",
-                        >= 1 and <= 2 => "Junior Teacher",
-                        >= 3 and <= 5 => "Experienced Teacher",
-                        >= 6 and <= 10 => "Senior Teacher",
-                        > 10 => "Expert Teacher",
-                        _ => "Unknown"
-                    },
-                    trialAvailabilityDisplay = teacher.IsAvailableForTrial ? "Available for Trial" : "Not Available for Trial",
-                    createdDate = teacher.CreatedDate.ToString("dd/MM/yyyy HH:mm"),
-                    updatedDate = teacher.UpdatedDate?.ToString("dd/MM/yyyy HH:mm")
+                    TeacherId = teacher.TeacherId,
+                    CompanyName = teacher.Company.CompanyName,
+                    SiteName = teacher.Site.SiteName,
+                    TeacherCode = teacher.TeacherCode,
+                    UserName = teacher.User.FullName,
+                    UserEmail = teacher.User.Email,
+                    UserPhone = teacher.User.Phone,
+                    Specialization = teacher.Specialization,
+                    ExperienceYears = teacher.ExperienceYears,
+                    HourlyRate = teacher.HourlyRate,
+                    MaxStudentsPerDay = teacher.MaxStudentsPerDay,
+                    IsAvailableForTrial = teacher.IsAvailableForTrial,
+                    IsActive = teacher.IsActive,
+                    CreatedDate = teacher.CreatedDate,
+                    UpdatedDate = teacher.UpdatedDate
                 };
 
-                return Json(new { success = true, data = teacherDetails });
+                return Json(new { success = true, data = viewModel });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting teacher details for ID {TeacherId}", id);
-                return Json(new { success = false, message = "Error loading teacher details." });
+                _logger.LogError(ex, "Error getting teacher details");
+                return Json(new { success = false, message = "An error occurred while retrieving teacher details." });
             }
         }
 
@@ -127,7 +114,14 @@ namespace KMSI_Projects.Controllers
             try
             {
                 var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                var currentUser = await _context.Users.FirstOrDefaultAsync(u => u.UserId == currentUserId);
+                var currentUser = await _context.Users
+                    .Include(u => u.Company)
+                    .FirstOrDefaultAsync(u => u.UserId == currentUserId);
+
+                if (currentUser == null)
+                {
+                    return Json(new { success = false, message = "User not authenticated." });
+                }
 
                 // Get available users (not already assigned as teachers)
                 var assignedUserIds = await _context.Teachers
@@ -136,17 +130,14 @@ namespace KMSI_Projects.Controllers
                     .ToListAsync();
 
                 var availableUsers = await _context.Users
-                    .Where(u => u.IsActive &&
-                               (u.CompanyId == currentUser.CompanyId || u.Company.ParentCompanyId == currentUser.CompanyId) &&
-                               !assignedUserIds.Contains(u.UserId))
-                    .Select(u => new { u.UserId, u.FullName, u.Email })
+                    .Where(u => u.IsActive && u.CompanyId == currentUser.CompanyId && !assignedUserIds.Contains(u.UserId))
+                    .Select(u => new { u.UserId, FullName = u.FirstName + " " + u.LastName, u.Email })
                     .OrderBy(u => u.FullName)
                     .ToListAsync();
 
-                // Get available companies
+                // Get companies for dropdown
                 var companies = await _context.Companies
-                    .Where(c => c.IsActive &&
-                               (c.CompanyId == currentUser.CompanyId || c.ParentCompanyId == currentUser.CompanyId))
+                    .Where(c => c.CompanyId == currentUser.CompanyId || c.ParentCompanyId == currentUser.CompanyId)
                     .Select(c => new { c.CompanyId, c.CompanyName })
                     .OrderBy(c => c.CompanyName)
                     .ToListAsync();
@@ -160,8 +151,28 @@ namespace KMSI_Projects.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting create form data");
+                _logger.LogError(ex, "Error loading create form data");
                 return Json(new { success = false, message = "Error loading form data." });
+            }
+        }
+
+        // GET: Teacher/GetSitesByCompany/5
+        public async Task<IActionResult> GetSitesByCompany(int companyId)
+        {
+            try
+            {
+                var sites = await _context.Sites
+                    .Where(s => s.CompanyId == companyId && s.IsActive)
+                    .Select(s => new { s.SiteId, s.SiteName })
+                    .OrderBy(s => s.SiteName)
+                    .ToListAsync();
+
+                return Json(new { success = true, sites = sites });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading sites for company {CompanyId}", companyId);
+                return Json(new { success = false, message = "Error loading sites." });
             }
         }
 
@@ -176,22 +187,22 @@ namespace KMSI_Projects.Controllers
                 {
                     var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
-                    // Check if teacher code already exists
+                    // Check if teacher code already exists within the same company
                     var existingTeacher = await _context.Teachers
-                        .FirstOrDefaultAsync(t => t.TeacherCode == model.TeacherCode && t.IsActive);
+                        .FirstOrDefaultAsync(t => t.TeacherCode == model.TeacherCode && t.CompanyId == model.CompanyId);
 
                     if (existingTeacher != null)
                     {
-                        return Json(new { success = false, message = "Teacher code already exists." });
+                        return Json(new { success = false, message = "Teacher code already exists in this company." });
                     }
 
-                    // Check if user is already assigned as a teacher
+                    // Check if user is already assigned to another teacher
                     var userAlreadyTeacher = await _context.Teachers
                         .FirstOrDefaultAsync(t => t.UserId == model.UserId && t.IsActive);
 
                     if (userAlreadyTeacher != null)
                     {
-                        return Json(new { success = false, message = "This user is already assigned as a teacher." });
+                        return Json(new { success = false, message = "This user is already assigned to another teacher." });
                     }
 
                     var teacher = new Teacher
@@ -213,9 +224,19 @@ namespace KMSI_Projects.Controllers
                     _context.Teachers.Add(teacher);
                     await _context.SaveChangesAsync();
 
-                    _logger.LogInformation("Teacher created successfully: {TeacherCode} by user {UserId}", teacher.TeacherCode, currentUserId);
+                    _logger.LogInformation($"Teacher {teacher.TeacherCode} created by user {currentUserId}");
 
-                    return Json(new { success = true, message = "Teacher created successfully." });
+                    return Json(new
+                    {
+                        success = true,
+                        message = "Teacher created successfully.",
+                        data = new
+                        {
+                            teacherId = teacher.TeacherId,
+                            teacherCode = teacher.TeacherCode,
+                            userName = model.UserName
+                        }
+                    });
                 }
 
                 var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
@@ -228,7 +249,7 @@ namespace KMSI_Projects.Controllers
             }
         }
 
-        // GET: Teacher/GetEditForm/5
+        // GET: Teacher/Edit/5
         public async Task<IActionResult> GetEditForm(int? id)
         {
             if (id == null)
@@ -242,7 +263,7 @@ namespace KMSI_Projects.Controllers
                     .Include(t => t.User)
                     .Include(t => t.Company)
                     .Include(t => t.Site)
-                    .FirstOrDefaultAsync(m => m.TeacherId == id);
+                    .FirstOrDefaultAsync(t => t.TeacherId == id);
 
                 if (teacher == null)
                 {
@@ -250,54 +271,55 @@ namespace KMSI_Projects.Controllers
                 }
 
                 var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                var currentUser = await _context.Users.FirstOrDefaultAsync(u => u.UserId == currentUserId);
+                var currentUser = await _context.Users
+                    .Include(u => u.Company)
+                    .FirstOrDefaultAsync(u => u.UserId == currentUserId);
 
-                // Get available users (including current teacher's user)
+                // Get available users plus current teacher's user
                 var assignedUserIds = await _context.Teachers
                     .Where(t => t.IsActive && t.TeacherId != id)
                     .Select(t => t.UserId)
                     .ToListAsync();
 
                 var availableUsers = await _context.Users
-                    .Where(u => u.IsActive &&
-                               (u.CompanyId == currentUser.CompanyId || u.Company.ParentCompanyId == currentUser.CompanyId) &&
-                               (!assignedUserIds.Contains(u.UserId) || u.UserId == teacher.UserId))
-                    .Select(u => new { u.UserId, u.FullName, u.Email })
+                    .Where(u => u.IsActive && u.CompanyId == currentUser.CompanyId && (!assignedUserIds.Contains(u.UserId) || u.UserId == teacher.UserId))
+                    .Select(u => new { u.UserId, FullName = u.FirstName + " " + u.LastName, u.Email })
                     .OrderBy(u => u.FullName)
                     .ToListAsync();
 
-                // Get available companies
+                // Get companies for dropdown
                 var companies = await _context.Companies
-                    .Where(c => c.IsActive &&
-                               (c.CompanyId == currentUser.CompanyId || c.ParentCompanyId == currentUser.CompanyId))
+                    .Where(c => c.CompanyId == currentUser.CompanyId || c.ParentCompanyId == currentUser.CompanyId)
                     .Select(c => new { c.CompanyId, c.CompanyName })
                     .OrderBy(c => c.CompanyName)
                     .ToListAsync();
 
                 // Get sites for selected company
                 var sites = await _context.Sites
-                    .Where(s => s.IsActive && s.CompanyId == teacher.CompanyId)
+                    .Where(s => s.CompanyId == teacher.CompanyId && s.IsActive)
                     .Select(s => new { s.SiteId, s.SiteName })
                     .OrderBy(s => s.SiteName)
                     .ToListAsync();
 
+                var viewModel = new TeacherViewModel
+                {
+                    TeacherId = teacher.TeacherId,
+                    UserId = teacher.UserId,
+                    CompanyId = teacher.CompanyId,
+                    SiteId = teacher.SiteId,
+                    TeacherCode = teacher.TeacherCode,
+                    Specialization = teacher.Specialization,
+                    ExperienceYears = teacher.ExperienceYears,
+                    HourlyRate = teacher.HourlyRate,
+                    MaxStudentsPerDay = teacher.MaxStudentsPerDay,
+                    IsAvailableForTrial = teacher.IsAvailableForTrial,
+                    IsActive = teacher.IsActive
+                };
+
                 return Json(new
                 {
                     success = true,
-                    data = new
-                    {
-                        teacherId = teacher.TeacherId,
-                        userId = teacher.UserId,
-                        companyId = teacher.CompanyId,
-                        siteId = teacher.SiteId,
-                        teacherCode = teacher.TeacherCode,
-                        specialization = teacher.Specialization,
-                        experienceYears = teacher.ExperienceYears,
-                        hourlyRate = teacher.HourlyRate,
-                        maxStudentsPerDay = teacher.MaxStudentsPerDay,
-                        isAvailableForTrial = teacher.IsAvailableForTrial,
-                        isActive = teacher.IsActive
-                    },
+                    teacher = viewModel,
                     users = availableUsers,
                     companies = companies,
                     sites = sites
@@ -305,7 +327,7 @@ namespace KMSI_Projects.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting edit form data for teacher {TeacherId}", id);
+                _logger.LogError(ex, "Error loading edit form for teacher {TeacherId}", id);
                 return Json(new { success = false, message = "Error loading teacher data." });
             }
         }
@@ -334,11 +356,11 @@ namespace KMSI_Projects.Controllers
 
                     // Check if teacher code already exists (excluding current teacher)
                     var existingTeacher = await _context.Teachers
-                        .FirstOrDefaultAsync(t => t.TeacherCode == model.TeacherCode && t.TeacherId != id && t.IsActive);
+                        .FirstOrDefaultAsync(t => t.TeacherCode == model.TeacherCode && t.TeacherId != id && t.CompanyId == model.CompanyId);
 
                     if (existingTeacher != null)
                     {
-                        return Json(new { success = false, message = "Teacher code already exists." });
+                        return Json(new { success = false, message = "Teacher code already exists in this company." });
                     }
 
                     // Check if user is already assigned to another teacher
@@ -376,7 +398,7 @@ namespace KMSI_Projects.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating teacher: {TeacherId}", id);
+                _logger.LogError(ex, "Error updating teacher {TeacherId}", id);
                 return Json(new { success = false, message = "An error occurred while updating the teacher." });
             }
         }
@@ -388,66 +410,48 @@ namespace KMSI_Projects.Controllers
         {
             try
             {
-                var teacher = await _context.Teachers.FindAsync(id);
+                var teacher = await _context.Teachers
+                    .FirstOrDefaultAsync(t => t.TeacherId == id);
+
                 if (teacher == null)
                 {
                     return Json(new { success = false, message = "Teacher not found." });
                 }
 
-                // Check if teacher has active students
-                var hasActiveStudents = await _context.Students
-                    .AnyAsync(s => s.AssignedTeacherId == id && s.IsActive);
-
-                // Check if teacher has active schedules
+                // Check if teacher has active schedules (without navigation property include)
                 var hasActiveSchedules = await _context.ClassSchedules
                     .AnyAsync(cs => cs.TeacherId == id && cs.ScheduleDate >= DateTime.Today);
 
-                if (hasActiveStudents || hasActiveSchedules)
+                // Check if teacher has active students (without navigation property include)
+                var hasActiveStudents = await _context.Students
+                    .AnyAsync(s => s.AssignedTeacherId == id && s.IsActive);
+
+                if (hasActiveSchedules || hasActiveStudents)
                 {
                     return Json(new
                     {
                         success = false,
-                        message = "Cannot delete teacher with active students or schedules. Please reassign or deactivate them first."
+                        message = "Cannot delete teacher with active schedules or assigned students. Please reassign or remove them first."
                     });
                 }
 
                 var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
-                // Soft delete
+                // Soft delete - set IsActive to false
                 teacher.IsActive = false;
                 teacher.UpdatedBy = currentUserId;
                 teacher.UpdatedDate = DateTime.Now;
 
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation("Teacher deleted successfully: {TeacherCode} by user {UserId}", teacher.TeacherCode, currentUserId);
+                _logger.LogInformation("Teacher {TeacherCode} soft deleted by user {UserId}", teacher.TeacherCode, currentUserId);
 
                 return Json(new { success = true, message = "Teacher deleted successfully." });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting teacher: {TeacherId}", id);
+                _logger.LogError(ex, "Error deleting teacher {TeacherId}: {Message}", id, ex.Message);
                 return Json(new { success = false, message = "An error occurred while deleting the teacher." });
-            }
-        }
-
-        // GET: Teacher/GetSitesByCompany/5
-        public async Task<IActionResult> GetSitesByCompany(int companyId)
-        {
-            try
-            {
-                var sites = await _context.Sites
-                    .Where(s => s.IsActive && s.CompanyId == companyId)
-                    .Select(s => new { s.SiteId, s.SiteName })
-                    .OrderBy(s => s.SiteName)
-                    .ToListAsync();
-
-                return Json(new { success = true, sites = sites });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error loading sites for company: {CompanyId}", companyId);
-                return Json(new { success = false, message = "An error occurred while loading sites." });
             }
         }
     }

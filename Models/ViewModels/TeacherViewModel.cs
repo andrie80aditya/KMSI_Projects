@@ -4,7 +4,7 @@ namespace KMSI_Projects.Models.ViewModels
 {
     /// <summary>
     /// View model for Teacher management operations
-    /// Used for Create and Edit operations in Teacher Master
+    /// Used for Create and Edit operations in module Teacher Master
     /// </summary>
     public class TeacherViewModel
     {
