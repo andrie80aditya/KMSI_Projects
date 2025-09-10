@@ -1,0 +1,705 @@
+﻿@model IEnumerable<KMSI_Projects.Models.Grade>
+
+@{
+    ViewData["Title"] = "Master Grade";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<!-- Anti-forgery token untuk production -->
+@Html.AntiForgeryToken()
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h3 class="card-title mb-0">
+                                <i class="fas fa-layer-group me-2"></i>Grade Management
+                            </h3>
+                        </div>
+                        <div class="col-auto">
+                            <button type="button" class="btn btn-primary" onclick="openCreateModal()">
+                                <i class="fas fa-plus me-2"></i>Add New Grade
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="gradeTable">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th width="10%">Grade Code</th>
+                                    <th width="20%">Grade Name</th>
+                                    <th width="15%">Company</th>
+                                    <th width="15%">Duration</th>
+                                    <th width="10%">Sort Order</th>
+                                    <th width="10%">Students</th>
+                                    <th width="8%">Status</th>
+                                    <th width="12%">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model)
+                                {
+                                    <tr>
+                                        <td>
+                                            <strong>@Html.DisplayFor(modelItem => item.GradeCode)</strong>
+                                        </td>
+                                        <td>@Html.DisplayFor(modelItem => item.GradeName)</td>
+                                        <td>
+                                            <span class="badge bg-info">@item.Company.CompanyCode</span>
+                                            <br><small>@item.Company.CompanyName</small>
+                                        </td>
+                                        <td>
+                                            @if (item.Duration.HasValue)
+                                            {
+                                                @item.Duration <text>weeks</text>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">Not specified</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (item.SortOrder.HasValue)
+                                            {
+                                                @item.SortOrder
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">-</span>
+                                            }
+                                        </td>
+                                        <td>@(item.CurrentStudents?.Count ?? 0)</td>
+                                        <td>
+                                            @if (item.IsActive)
+                                            {
+                                                <span class="badge bg-success">Active</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger">Inactive</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-info btn-sm" onclick="viewDetails(@item.GradeId)" title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-warning btn-sm" onclick="openEditModal(@item.GradeId)" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-danger btn-sm" onclick="deleteGrade(@item.GradeId)" title="Delete">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create/Edit Modal -->
+<div class="modal fade" id="gradeModal" tabindex="-1" aria-labelledby="gradeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="gradeModalLabel">Add New Grade</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="gradeForm">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <input type="hidden" id="gradeId" value="0" />
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="companyId" class="form-label">Company <span class="text-danger">*</span></label>
+                            <select class="form-select" id="companyId" name="CompanyId" required>
+                                <option value="">Select Company</option>
+                            </select>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="gradeCode" class="form-label">Grade Code <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="gradeCode" name="GradeCode" required maxlength="10" style="text-transform: uppercase;">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="gradeName" class="form-label">Grade Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="gradeName" name="GradeName" required maxlength="50">
+                        <div class="invalid-feedback"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="Description" rows="3" maxlength="255"></textarea>
+                        <div class="invalid-feedback"></div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="duration" class="form-label">Duration (Weeks)</label>
+                            <input type="number" class="form-control" id="duration" name="Duration" min="1" max="104">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="sortOrder" class="form-label">Sort Order</label>
+                            <input type="number" class="form-control" id="sortOrder" name="SortOrder" min="1" max="100">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="isActive" name="IsActive" checked>
+                                <label class="form-check-label" for="isActive">
+                                    Active Status
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveButton">
+                        <i class="fas fa-save me-2"></i>Save Grade
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailsModalLabel">Grade Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="detailsContent">
+                <!-- Details content will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // ===================================================================
+        // PRODUCTION-READY JAVASCRIPT untuk KMSI Grade Module
+        // ===================================================================
+
+        // Global configuration dan utility functions
+        window.KMSI = window.KMSI || {};
+
+        // Base URL configuration - otomatis detect environment
+        KMSI.Config = KMSI.Config || {
+            // Otomatis detect base URL dari current location
+            getBaseUrl: function() {
+                const protocol = window.location.protocol;
+                const host = window.location.host;
+                const pathArray = window.location.pathname.split('/');
+
+                // Jika ada virtual directory (IIS deployment)
+                let basePath = '';
+                if (pathArray.length > 1 && pathArray[1] !== '') {
+                    // Check if first path segment is likely a virtual directory
+                    const firstSegment = pathArray[1].toLowerCase();
+                    if (!['grade', 'site', 'company', 'student', 'teacher', 'home'].includes(firstSegment)) {
+                        basePath = '/' + pathArray[1];
+                    }
+                }
+
+                return protocol + '//' + host + basePath;
+            },
+
+            // Build complete URL for API calls
+            buildUrl: function(relativePath) {
+                const baseUrl = this.getBaseUrl();
+                // Ensure relativePath starts with /
+                if (!relativePath.startsWith('/')) {
+                    relativePath = '/' + relativePath;
+                }
+                return baseUrl + relativePath;
+            },
+
+            // Get anti-forgery token
+            getAntiForgeryToken: function() {
+                return $('input[name="__RequestVerificationToken"]').val() ||
+                       $('meta[name="__RequestVerificationToken"]').attr('content') ||
+                       '';
+            }
+        };
+
+        // Grade Module dengan production-ready AJAX calls (mengikuti pola Site)
+        KMSI.Grade = {
+            // Initialize module
+            init: function() {
+                this.isEditMode = false;
+                this.gradeTable = null;
+                this.bindEvents();
+                this.initializeDataTable();
+            },
+
+            // Bind event handlers
+            bindEvents: function() {
+                const self = this;
+
+                // Grade code to uppercase
+                $(document).on('input', '#gradeCode', function() {
+                    this.value = this.value.toUpperCase();
+                });
+
+                // Form submission
+                $(document).on('submit', '#gradeForm', function(e) {
+                    e.preventDefault();
+                    self.submitForm();
+                });
+
+                // Modal events
+                $('#gradeModal').on('hidden.bs.modal', function() {
+                    self.resetForm();
+                });
+            },
+
+            // Initialize DataTable
+            initializeDataTable: function() {
+                try {
+                    if ($.fn.DataTable && $('#gradeTable').length) {
+                        this.gradeTable = $('#gradeTable').DataTable({
+                            responsive: true,
+                            pageLength: 25,
+                            order: [[4, 'asc'], [1, 'asc']], // Sort by sort order, then grade name
+                            columnDefs: [
+                                { targets: [7], orderable: false } // Actions column not sortable
+                            ],
+                            language: {
+                                search: "Search grades:",
+                                lengthMenu: "Show _MENU_ grades per page",
+                                info: "Showing _START_ to _END_ of _TOTAL_ grades",
+                                infoEmpty: "No grades available",
+                                zeroRecords: "No matching grades found"
+                            }
+                        });
+                        console.log('Grade DataTable initialized successfully');
+                    }
+                } catch (error) {
+                    console.error('Error initializing DataTable:', error);
+                    this.showToast('Error initializing table. Some features may not work properly.', 'warning');
+                }
+            },
+
+            // Reset form
+            resetForm: function() {
+                $('#gradeForm')[0].reset();
+                $('#gradeId').val('0');
+                $('#gradeForm .is-invalid').removeClass('is-invalid');
+                $('#gradeForm .invalid-feedback').text('');
+                this.isEditMode = false;
+                this.updateModalTitle();
+            },
+
+            // Update modal title
+            updateModalTitle: function() {
+                const title = this.isEditMode ? 'Edit Grade' : 'Add New Grade';
+                $('#gradeModalLabel').text(title);
+                const buttonText = this.isEditMode ?
+                    '<i class="fas fa-save me-2"></i>Update Grade' :
+                    '<i class="fas fa-save me-2"></i>Save Grade';
+                $('#saveButton').html(buttonText);
+            },
+
+            // Show toast notification
+            showToast: function(message, type = 'success') {
+                if (typeof Swal !== 'undefined') {
+                    const icon = type === 'success' ? 'success' : type === 'error' ? 'error' : 'warning';
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: icon,
+                        title: message,
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+                } else {
+                    alert(message);
+                }
+            },
+
+            // Validate form
+            validateForm: function() {
+                let isValid = true;
+                const form = document.getElementById('gradeForm');
+
+                // Clear previous validation
+                $(form).find('.is-invalid').removeClass('is-invalid');
+                $(form).find('.invalid-feedback').text('');
+
+                // Company validation
+                const companyId = $('#companyId').val();
+                if (!companyId) {
+                    this.showFieldError('#companyId', 'Please select a company');
+                    isValid = false;
+                }
+
+                // Grade code validation
+                const gradeCode = $('#gradeCode').val().trim();
+                if (!gradeCode) {
+                    this.showFieldError('#gradeCode', 'Grade code is required');
+                    isValid = false;
+                } else if (!/^[A-Z0-9]+$/.test(gradeCode)) {
+                    this.showFieldError('#gradeCode', 'Grade code must contain only uppercase letters and numbers');
+                    isValid = false;
+                }
+
+                // Grade name validation
+                const gradeName = $('#gradeName').val().trim();
+                if (!gradeName) {
+                    this.showFieldError('#gradeName', 'Grade name is required');
+                    isValid = false;
+                }
+
+                // Duration validation
+                const duration = $('#duration').val();
+                if (duration && (duration < 1 || duration > 104)) {
+                    this.showFieldError('#duration', 'Duration must be between 1 and 104 weeks');
+                    isValid = false;
+                }
+
+                // Sort order validation
+                const sortOrder = $('#sortOrder').val();
+                if (sortOrder && (sortOrder < 1 || sortOrder > 100)) {
+                    this.showFieldError('#sortOrder', 'Sort order must be between 1 and 100');
+                    isValid = false;
+                }
+
+                return isValid;
+            },
+
+            // Show field error
+            showFieldError: function(fieldSelector, message) {
+                const field = $(fieldSelector);
+                field.addClass('is-invalid');
+                field.siblings('.invalid-feedback').text(message);
+            },
+
+            // Submit form
+            submitForm: function() {
+                if (!this.validateForm()) {
+                    return;
+                }
+
+                const self = this;
+                const formData = this.getFormData();
+                const url = this.isEditMode ?
+                    KMSI.Config.buildUrl('/Grade/Edit/' + $('#gradeId').val()) :
+                    KMSI.Config.buildUrl('/Grade/Create');
+
+                // Show loading state
+                const saveButton = $('#saveButton');
+                const originalHtml = saveButton.html();
+                saveButton.html('<i class="fas fa-spinner fa-spin me-2"></i>Saving...').prop('disabled', true);
+
+                $.ajax({
+                    url: url,
+                    type: 'POST',
+                    data: JSON.stringify(formData),
+                    contentType: 'application/json',
+                    headers: {
+                        'RequestVerificationToken': KMSI.Config.getAntiForgeryToken()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            self.showToast(response.message, 'success');
+                            $('#gradeModal').modal('hide');
+                            // Reload page after short delay
+                            setTimeout(function() {
+                                window.location.reload();
+                            }, 1500);
+                        } else {
+                            self.showToast(response.message, 'error');
+                            if (response.errors && response.errors.length > 0) {
+                                response.errors.forEach(function(error) {
+                                    console.error('Validation error:', error);
+                                });
+                            }
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('AJAX Error:', error);
+                        self.showToast('An error occurred while saving the grade', 'error');
+                    },
+                    complete: function() {
+                        // Restore button state
+                        saveButton.html(originalHtml).prop('disabled', false);
+                    }
+                });
+            },
+
+            // Get form data
+            getFormData: function() {
+                return {
+                    GradeId: parseInt($('#gradeId').val()) || 0,
+                    CompanyId: parseInt($('#companyId').val()),
+                    GradeCode: $('#gradeCode').val().trim().toUpperCase(),
+                    GradeName: $('#gradeName').val().trim(),
+                    Description: $('#description').val().trim() || null,
+                    Duration: $('#duration').val() ? parseInt($('#duration').val()) : null,
+                    SortOrder: $('#sortOrder').val() ? parseInt($('#sortOrder').val()) : null,
+                    IsActive: $('#isActive').is(':checked')
+                };
+            },
+
+            // Load companies for dropdown
+            loadCompanies: function() {
+                const self = this;
+
+                var url = KMSI.Config.buildUrl('/Grade/GetCreateForm');
+                console.log("URL : " + url);
+
+                $.ajax({
+                    url: KMSI.Config.buildUrl('/Grade/GetCreateForm'),
+                    type: 'GET',
+                    success: function(response) {
+                        if (response.success) {
+                            const select = $('#companyId');
+                            select.empty().append('<option value="">Select Company</option>');
+
+                            response.companies.forEach(function(company) {
+                                select.append(`<option value="${company.companyId}">${company.companyName}</option>`);
+                            });
+                        } else {
+                            self.showToast('Error loading companies', 'error');
+                        }
+                    },
+                    error: function() {
+                        self.showToast('Error loading companies', 'error');
+                    }
+                });
+            },
+
+            // Open create modal
+            openCreateModal: function() {
+                try {
+                    this.isEditMode = false;
+                    this.resetForm();
+                    $('#gradeModalLabel').text('Add New Grade');
+                    $('#saveButton').html('<i class="fas fa-save me-2"></i>Save Grade');
+
+                    this.loadCompanies();
+                    $('#gradeModal').modal('show');
+                } catch (error) {
+                    console.error('Error opening create modal:', error);
+                    KMSI.showToast('Error opening form. Please try again.', 'error');
+                }
+            },
+
+            // Open edit modal
+            openEditModal: function(gradeId) {
+                const self = this;
+
+                $.ajax({
+                    url: KMSI.Config.buildUrl('/Grade/GetEditForm/' + gradeId),
+                    type: 'GET',
+                    success: function(response) {
+                        if (response.success) {
+                            self.isEditMode = true;
+                            self.updateModalTitle();
+
+                            // Load companies first
+                            self.loadCompanies();
+
+                            // Set form values after a short delay to ensure companies are loaded
+                            setTimeout(function() {
+                                $('#gradeId').val(response.data.gradeId);
+                                $('#companyId').val(response.data.companyId);
+                                $('#gradeCode').val(response.data.gradeCode);
+                                $('#gradeName').val(response.data.gradeName);
+                                $('#description').val(response.data.description || '');
+                                $('#duration').val(response.data.duration || '');
+                                $('#sortOrder').val(response.data.sortOrder || '');
+                                $('#isActive').prop('checked', response.data.isActive);
+
+                                $('#gradeModal').modal('show');
+                            }, 500);
+                        } else {
+                            self.showToast(response.message, 'error');
+                        }
+                    },
+                    error: function() {
+                        self.showToast('Error loading grade data', 'error');
+                    }
+                });
+            },
+
+            // View details
+            viewDetails: function(gradeId) {
+                const self = this;
+
+                $.ajax({
+                    url: KMSI.Config.buildUrl('/Grade/Details/' + gradeId),
+                    type: 'GET',
+                    success: function(response) {
+                        if (response.success) {
+                            const data = response.data;
+                            const content = `
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <table class="table table-borderless">
+                                            <tr>
+                                                <td><strong>Grade Code:</strong></td>
+                                                <td>${data.gradeCode}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Grade Name:</strong></td>
+                                                <td>${data.gradeName}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Company:</strong></td>
+                                                <td>${data.companyName}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Duration:</strong></td>
+                                                <td>${data.duration ? data.duration + ' weeks' : 'Not specified'}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <table class="table table-borderless">
+                                            <tr>
+                                                <td><strong>Sort Order:</strong></td>
+                                                <td>${data.sortOrder || 'Not specified'}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Status:</strong></td>
+                                                <td>${data.isActive ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-danger">Inactive</span>'}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Created:</strong></td>
+                                                <td>${data.createdDate}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+                                ${data.description ? `
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <h6>Description:</h6>
+                                            <p class="text-muted">${data.description}</p>
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            `;
+
+                            $('#detailsContent').html(content);
+                            $('#detailsModal').modal('show');
+                        } else {
+                            self.showToast(response.message, 'error');
+                        }
+                    },
+                    error: function() {
+                        self.showToast('Error loading grade details', 'error');
+                    }
+                });
+            },
+
+            // Delete grade
+            deleteGrade: function(gradeId) {
+                const self = this;
+
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Are you sure?',
+                        text: "You won't be able to revert this!",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        cancelButtonColor: '#3085d6',
+                        confirmButtonText: 'Yes, delete it!'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            self.performDelete(gradeId);
+                        }
+                    });
+                } else {
+                    if (confirm('Are you sure you want to delete this grade?')) {
+                        self.performDelete(gradeId);
+                    }
+                }
+            },
+
+            // Perform delete
+            performDelete: function(gradeId) {
+                const self = this;
+
+                $.ajax({
+                    url: KMSI.Config.buildUrl('/Grade/Delete/' + gradeId),
+                    type: 'POST',
+                    headers: {
+                        'RequestVerificationToken': KMSI.Config.getAntiForgeryToken()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            self.showToast(response.message, 'success');
+                            // Reload page after short delay
+                            setTimeout(function() {
+                                window.location.reload();
+                            }, 1500);
+                        } else {
+                            self.showToast(response.message, 'error');
+                        }
+                    },
+                    error: function() {
+                        self.showToast('Error deleting grade', 'error');
+                    }
+                });
+            }
+        };
+
+        // Global functions untuk onclick handlers (mengikuti pola Site)
+        function openCreateModal() {
+            KMSI.Grade.openCreateModal();
+        }
+
+        function openEditModal(gradeId) {
+            KMSI.Grade.openEditModal(gradeId);
+        }
+
+        function viewDetails(gradeId) {
+            KMSI.Grade.viewDetails(gradeId);
+        }
+
+        function deleteGrade(gradeId) {
+            KMSI.Grade.deleteGrade(gradeId);
+        }
+
+        // Document ready - Initialize module (mengikuti pola Site)
+        $(document).ready(function() {
+            try {
+                KMSI.Grade.init();
+                console.log('KMSI Grade module initialized successfully');
+            } catch (error) {
+                console.error('Error initializing KMSI Grade module:', error);
+            }
+        });
+    </script>
+}
