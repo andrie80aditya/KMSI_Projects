@@ -100,17 +100,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }, 5000);
 
-    // Add loading states to forms
-    const forms = document.querySelectorAll('form');
-    forms.forEach(function (form) {
-        form.addEventListener('submit', function () {
-            const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
-            if (submitBtn) {
-                KMSI.showLoading(form);
-            }
-        });
-    });
-
     // Add confirmation to delete buttons
     const deleteButtons = document.querySelectorAll('.btn-delete, [data-action="delete"]');
     deleteButtons.forEach(function (btn) {
@@ -125,17 +114,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     });
-
-    // Auto-refresh functionality for dashboard
-    if (window.location.pathname === '/' || window.location.pathname === '/Home') {
-        setInterval(function () {
-            // Check if page is visible
-            if (!document.hidden) {
-                // You can add auto-refresh logic here
-                console.log('Dashboard auto-refresh check');
-            }
-        }, 300000); // 5 minutes
-    }
 });
 
 // Handle AJAX errors globally

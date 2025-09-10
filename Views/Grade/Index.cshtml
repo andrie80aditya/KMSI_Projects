@@ -203,58 +203,23 @@
 
 @section Scripts {
     <script>
-        // ===================================================================
-        // PRODUCTION-READY JAVASCRIPT untuk KMSI Grade Module
-        // ===================================================================
-
-        // Global configuration dan utility functions
-        window.KMSI = window.KMSI || {};
-
-        // Base URL configuration - otomatis detect environment
-        KMSI.Config = KMSI.Config || {
-            // Otomatis detect base URL dari current location
-            getBaseUrl: function() {
-                const protocol = window.location.protocol;
-                const host = window.location.host;
-                const pathArray = window.location.pathname.split('/');
-
-                // Jika ada virtual directory (IIS deployment)
-                let basePath = '';
-                if (pathArray.length > 1 && pathArray[1] !== '') {
-                    // Check if first path segment is likely a virtual directory
-                    const firstSegment = pathArray[1].toLowerCase();
-                    if (!['grade', 'site', 'company', 'student', 'teacher', 'home'].includes(firstSegment)) {
-                        basePath = '/' + pathArray[1];
-                    }
-                }
-
-                return protocol + '//' + host + basePath;
-            },
-
-            // Build complete URL for API calls
-            buildUrl: function(relativePath) {
-                const baseUrl = this.getBaseUrl();
-                // Ensure relativePath starts with /
-                if (!relativePath.startsWith('/')) {
-                    relativePath = '/' + relativePath;
-                }
-                return baseUrl + relativePath;
-            },
-
-            // Get anti-forgery token
-            getAntiForgeryToken: function() {
-                return $('input[name="__RequestVerificationToken"]').val() ||
-                       $('meta[name="__RequestVerificationToken"]').attr('content') ||
-                       '';
-            }
+        // URL configuration menggunakan Url Action
+        const gradeUrls = {
+            getCreateForm: '@Url.Action("GetCreateForm", "Grade")',
+            getEditForm: '@Url.Action("GetEditForm", "Grade")',
+            create: '@Url.Action("Create", "Grade")',
+            edit: '@Url.Action("Edit", "Grade")',
+            details: '@Url.Action("Details", "Grade")',
+            delete: '@Url.Action("Delete", "Grade")'
         };
 
-        // Grade Module dengan production-ready AJAX calls (mengikuti pola Site)
-        KMSI.Grade = {
+        // Grade Module dengan production-ready AJAX calls
+        const GradeModule = {
             // Initialize module
             init: function() {
                 this.isEditMode = false;
                 this.gradeTable = null;
+                this.originalButtonState = null;
                 this.bindEvents();
                 this.initializeDataTable();
             },
@@ -275,9 +240,34 @@
                 });
 
                 // Modal events
+                $('#gradeModal').on('show.bs.modal', function() {
+                    // Simpan state asli tombol saat modal dibuka
+                    self.originalButtonState = $('#saveButton').html();
+                });
+
                 $('#gradeModal').on('hidden.bs.modal', function() {
                     self.resetForm();
+                    // Kembalikan tombol ke state semula
+                    self.restoreButtonState();
                 });
+            },
+
+            // Simpan state asli tombol
+            saveButtonState: function() {
+                this.originalButtonState = $('#saveButton').html();
+            },
+
+            // Kembalikan state tombol ke semula
+            restoreButtonState: function() {
+                if (this.originalButtonState) {
+                    $('#saveButton').html(this.originalButtonState).prop('disabled', false);
+                } else {
+                    // Fallback jika originalButtonState tidak tersedia
+                    const buttonText = this.isEditMode ?
+                        '<i class="fas fa-save me-2"></i>Update Grade' :
+                        '<i class="fas fa-save me-2"></i>Save Grade';
+                    $('#saveButton').html(buttonText).prop('disabled', false);
+                }
             },
 
             // Initialize DataTable
@@ -287,9 +277,9 @@
                         this.gradeTable = $('#gradeTable').DataTable({
                             responsive: true,
                             pageLength: 25,
-                            order: [[4, 'asc'], [1, 'asc']], // Sort by sort order, then grade name
+                            order: [[4, 'asc'], [1, 'asc']],
                             columnDefs: [
-                                { targets: [7], orderable: false } // Actions column not sortable
+                                { targets: [7], orderable: false }
                             ],
                             language: {
                                 search: "Search grades:",
@@ -299,7 +289,6 @@
                                 zeroRecords: "No matching grades found"
                             }
                         });
-                        console.log('Grade DataTable initialized successfully');
                     }
                 } catch (error) {
                     console.error('Error initializing DataTable:', error);
@@ -321,26 +310,14 @@
             updateModalTitle: function() {
                 const title = this.isEditMode ? 'Edit Grade' : 'Add New Grade';
                 $('#gradeModalLabel').text(title);
-                const buttonText = this.isEditMode ?
-                    '<i class="fas fa-save me-2"></i>Update Grade' :
-                    '<i class="fas fa-save me-2"></i>Save Grade';
-                $('#saveButton').html(buttonText);
             },
 
-            // Show toast notification
+            // Show toast notification (gunakan KMSI global)
             showToast: function(message, type = 'success') {
-                if (typeof Swal !== 'undefined') {
-                    const icon = type === 'success' ? 'success' : type === 'error' ? 'error' : 'warning';
-                    Swal.fire({
-                        toast: true,
-                        position: 'top-end',
-                        icon: icon,
-                        title: message,
-                        showConfirmButton: false,
-                        timer: 3000,
-                        timerProgressBar: true
-                    });
+                if (window.KMSI && typeof window.KMSI.showToast === 'function') {
+                    window.KMSI.showToast(message, type);
                 } else {
+                    // Fallback jika KMSI tidak tersedia
                     alert(message);
                 }
             },
@@ -348,11 +325,11 @@
             // Validate form
             validateForm: function() {
                 let isValid = true;
-                const form = document.getElementById('gradeForm');
+                const formElement = document.getElementById('gradeForm');
 
                 // Clear previous validation
-                $(form).find('.is-invalid').removeClass('is-invalid');
-                $(form).find('.invalid-feedback').text('');
+                $(formElement).find('.is-invalid').removeClass('is-invalid');
+                $(formElement).find('.invalid-feedback').text('');
 
                 // Company validation
                 const companyId = $('#companyId').val();
@@ -402,33 +379,39 @@
                 field.siblings('.invalid-feedback').text(message);
             },
 
-            // Submit form
+            // Submit form - PERBAIKAN UTAMA
             submitForm: function() {
+                const form = document.getElementById('gradeForm');
+                
                 if (!this.validateForm()) {
+                    KMSI.hideLoading(form);
                     return;
                 }
 
                 const self = this;
                 const formData = this.getFormData();
                 const url = this.isEditMode ?
-                    KMSI.Config.buildUrl('/Grade/Edit/' + $('#gradeId').val()) :
-                    KMSI.Config.buildUrl('/Grade/Create');
+                    gradeUrls.edit + '/' + $('#gradeId').val() :
+                    gradeUrls.create;
+
+                // Simpan state tombol sebelum perubahan
+                this.saveButtonState();
 
                 // Show loading state
-                const saveButton = $('#saveButton');
-                const originalHtml = saveButton.html();
-                saveButton.html('<i class="fas fa-spinner fa-spin me-2"></i>Saving...').prop('disabled', true);
+                $('#saveButton').html('<i class="fas fa-spinner fa-spin me-2"></i>Saving...').prop('disabled', true);
 
+                // AJAX request dengan timeout yang lebih panjang
                 $.ajax({
                     url: url,
                     type: 'POST',
                     data: JSON.stringify(formData),
                     contentType: 'application/json',
                     headers: {
-                        'RequestVerificationToken': KMSI.Config.getAntiForgeryToken()
+                        'RequestVerificationToken': this.getAntiForgeryToken()
                     },
+                    timeout: 30000,
                     success: function(response) {
-                        if (response.success) {
+                        if (response && response.success) {
                             self.showToast(response.message, 'success');
                             $('#gradeModal').modal('hide');
                             // Reload page after short delay
@@ -436,21 +419,46 @@
                                 window.location.reload();
                             }, 1500);
                         } else {
-                            self.showToast(response.message, 'error');
+                            // Pastikan tombol dikembalikan ke state semula
+                            self.restoreButtonState();
+
+                            // Menampilkan error dari server
+                            let errorMessage = response.message || 'An error occurred while saving the grade';
+
                             if (response.errors && response.errors.length > 0) {
+                                errorMessage += '<br>' + response.errors.join('<br>');
+
+                                // Menandai field yang error
                                 response.errors.forEach(function(error) {
-                                    console.error('Validation error:', error);
+                                    if (error.includes('Grade Code')) {
+                                        self.showFieldError('#gradeCode', error);
+                                    } else if (error.includes('Grade Name')) {
+                                        self.showFieldError('#gradeName', error);
+                                    } else if (error.includes('Company')) {
+                                        self.showFieldError('#companyId', error);
+                                    }
                                 });
                             }
+
+                            self.showToast(errorMessage, 'error');
+                            KMSI.hideLoading(form);
                         }
                     },
                     error: function(xhr, status, error) {
                         console.error('AJAX Error:', error);
-                        self.showToast('An error occurred while saving the grade', 'error');
-                    },
-                    complete: function() {
-                        // Restore button state
-                        saveButton.html(originalHtml).prop('disabled', false);
+
+                        // Pastikan tombol dikembalikan ke state semula
+                        self.restoreButtonState();
+
+                        let errorMessage = 'An error occurred while saving the grade';
+                        if (status === 'timeout') {
+                            errorMessage = 'Request timeout. Please try again.';
+                        } else if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+
+                        self.showToast(errorMessage, 'error');
+                        KMSI.hideLoading(form);
                     }
                 });
             },
@@ -469,18 +477,23 @@
                 };
             },
 
+            // Get anti-forgery token
+            getAntiForgeryToken: function() {
+                return $('input[name="__RequestVerificationToken"]').val() ||
+                       $('meta[name="__RequestVerificationToken"]').attr('content') ||
+                       '';
+            },
+
             // Load companies for dropdown
             loadCompanies: function() {
                 const self = this;
 
-                var url = KMSI.Config.buildUrl('/Grade/GetCreateForm');
-                console.log("URL : " + url);
-
                 $.ajax({
-                    url: KMSI.Config.buildUrl('/Grade/GetCreateForm'),
+                    url: gradeUrls.getCreateForm,
                     type: 'GET',
+                    timeout: 15000,
                     success: function(response) {
-                        if (response.success) {
+                        if (response && response.success) {
                             const select = $('#companyId');
                             select.empty().append('<option value="">Select Company</option>');
 
@@ -491,8 +504,12 @@
                             self.showToast('Error loading companies', 'error');
                         }
                     },
-                    error: function() {
-                        self.showToast('Error loading companies', 'error');
+                    error: function(xhr, status, error) {
+                        let errorMessage = 'Error loading companies';
+                        if (status === 'timeout') {
+                            errorMessage = 'Request timeout while loading companies. Please try again.';
+                        }
+                        self.showToast(errorMessage, 'error');
                     }
                 });
             },
@@ -502,14 +519,13 @@
                 try {
                     this.isEditMode = false;
                     this.resetForm();
-                    $('#gradeModalLabel').text('Add New Grade');
-                    $('#saveButton').html('<i class="fas fa-save me-2"></i>Save Grade');
+                    this.updateModalTitle();
 
                     this.loadCompanies();
                     $('#gradeModal').modal('show');
                 } catch (error) {
                     console.error('Error opening create modal:', error);
-                    KMSI.showToast('Error opening form. Please try again.', 'error');
+                    this.showToast('Error opening form. Please try again.', 'error');
                 }
             },
 
@@ -518,10 +534,11 @@
                 const self = this;
 
                 $.ajax({
-                    url: KMSI.Config.buildUrl('/Grade/GetEditForm/' + gradeId),
+                    url: gradeUrls.getEditForm + '/' + gradeId,
                     type: 'GET',
+                    timeout: 15000,
                     success: function(response) {
-                        if (response.success) {
+                        if (response && response.success) {
                             self.isEditMode = true;
                             self.updateModalTitle();
 
@@ -542,11 +559,15 @@
                                 $('#gradeModal').modal('show');
                             }, 500);
                         } else {
-                            self.showToast(response.message, 'error');
+                            self.showToast(response.message || 'Error loading grade data', 'error');
                         }
                     },
-                    error: function() {
-                        self.showToast('Error loading grade data', 'error');
+                    error: function(xhr, status, error) {
+                        let errorMessage = 'Error loading grade data';
+                        if (status === 'timeout') {
+                            errorMessage = 'Request timeout while loading grade data. Please try again.';
+                        }
+                        self.showToast(errorMessage, 'error');
                     }
                 });
             },
@@ -556,10 +577,11 @@
                 const self = this;
 
                 $.ajax({
-                    url: KMSI.Config.buildUrl('/Grade/Details/' + gradeId),
+                    url: gradeUrls.details + '/' + gradeId,
                     type: 'GET',
+                    timeout: 15000,
                     success: function(response) {
-                        if (response.success) {
+                        if (response && response.success) {
                             const data = response.data;
                             const content = `
                                 <div class="row">
@@ -613,11 +635,15 @@
                             $('#detailsContent').html(content);
                             $('#detailsModal').modal('show');
                         } else {
-                            self.showToast(response.message, 'error');
+                            self.showToast(response.message || 'Error loading grade details', 'error');
                         }
                     },
-                    error: function() {
-                        self.showToast('Error loading grade details', 'error');
+                    error: function(xhr, status, error) {
+                        let errorMessage = 'Error loading grade details';
+                        if (status === 'timeout') {
+                            errorMessage = 'Request timeout while loading grade details. Please try again.';
+                        }
+                        self.showToast(errorMessage, 'error');
                     }
                 });
             },
@@ -652,53 +678,57 @@
                 const self = this;
 
                 $.ajax({
-                    url: KMSI.Config.buildUrl('/Grade/Delete/' + gradeId),
+                    url: gradeUrls.delete + '/' + gradeId,
                     type: 'POST',
                     headers: {
-                        'RequestVerificationToken': KMSI.Config.getAntiForgeryToken()
+                        'RequestVerificationToken': this.getAntiForgeryToken()
                     },
+                    timeout: 15000,
                     success: function(response) {
-                        if (response.success) {
+                        if (response && response.success) {
                             self.showToast(response.message, 'success');
                             // Reload page after short delay
                             setTimeout(function() {
                                 window.location.reload();
                             }, 1500);
                         } else {
-                            self.showToast(response.message, 'error');
+                            self.showToast(response.message || 'Error deleting grade', 'error');
                         }
                     },
-                    error: function() {
-                        self.showToast('Error deleting grade', 'error');
+                    error: function(xhr, status, error) {
+                        let errorMessage = 'Error deleting grade';
+                        if (status === 'timeout') {
+                            errorMessage = 'Request timeout while deleting grade. Please try again.';
+                        }
+                        self.showToast(errorMessage, 'error');
                     }
                 });
             }
         };
 
-        // Global functions untuk onclick handlers (mengikuti pola Site)
+        // Global functions untuk onclick handlers
         function openCreateModal() {
-            KMSI.Grade.openCreateModal();
+            GradeModule.openCreateModal();
         }
 
         function openEditModal(gradeId) {
-            KMSI.Grade.openEditModal(gradeId);
+            GradeModule.openEditModal(gradeId);
         }
 
         function viewDetails(gradeId) {
-            KMSI.Grade.viewDetails(gradeId);
+            GradeModule.viewDetails(gradeId);
         }
 
         function deleteGrade(gradeId) {
-            KMSI.Grade.deleteGrade(gradeId);
+            GradeModule.deleteGrade(gradeId);
         }
 
-        // Document ready - Initialize module (mengikuti pola Site)
+        // Document ready - Initialize module
         $(document).ready(function() {
             try {
-                KMSI.Grade.init();
-                console.log('KMSI Grade module initialized successfully');
+                GradeModule.init();
             } catch (error) {
-                console.error('Error initializing KMSI Grade module:', error);
+                console.error('Error initializing Grade module:', error);
             }
         });
     </script>
