@@ -25,12 +25,14 @@ namespace KMSI_Projects.Controllers
         }
 
         // GET: Student
+        // GET: Student
         public async Task<IActionResult> Index()
         {
             try
             {
                 var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
                 var currentUser = await _context.Users
+                    .AsNoTracking()
                     .Include(u => u.Company)
                     .FirstOrDefaultAsync(u => u.UserId == currentUserId);
 
@@ -39,16 +41,106 @@ namespace KMSI_Projects.Controllers
                     return RedirectToAction("Login", "Account");
                 }
 
-                // Get students based on user's access level - mengikuti pola Teacher
-                var students = await _context.Students
-                    .Include(s => s.Company)
-                    .Include(s => s.Site)
-                    .Include(s => s.CurrentGrade)
-                    .Include(s => s.AssignedTeacher)
-                    .ThenInclude(t => t.User)
-                    .Where(s => s.CompanyId == currentUser.CompanyId || s.Company.ParentCompanyId == currentUser.CompanyId)
+                // Get allowed company IDs first
+                var allowedCompanyIds = await _context.Companies
+                    .AsNoTracking()
+                    .Where(c => c.CompanyId == currentUser.CompanyId || c.ParentCompanyId == currentUser.CompanyId)
+                    .Select(c => c.CompanyId)
+                    .ToListAsync();
+
+                // Get students dengan AsNoTracking untuk menghindari lazy loading navigation properties
+                var studentsQuery = _context.Students.AsNoTracking();
+
+                // Project ke anonymous type dulu untuk menghindari navigation property loading
+                var studentData = await studentsQuery
+                    .Where(s => allowedCompanyIds.Contains(s.CompanyId))
+                    .Select(s => new
+                    {
+                        s.StudentId,
+                        s.CompanyId,
+                        s.SiteId,
+                        s.StudentCode,
+                        s.FirstName,
+                        s.LastName,
+                        s.FullName,
+                        s.DateOfBirth,
+                        s.Gender,
+                        s.Phone,
+                        s.Email,
+                        s.ParentEmail,
+                        s.CurrentGradeId,
+                        s.AssignedTeacherId,
+                        s.Status,
+                        s.RegistrationDate,
+                        s.Notes,
+                        s.IsActive,
+                        s.CreatedDate,
+                        s.UpdatedDate
+                    })
                     .OrderBy(s => s.StudentCode)
                     .ToListAsync();
+
+                // Convert back ke Student objects
+                var students = studentData.Select(s => new Student
+                {
+                    StudentId = s.StudentId,
+                    CompanyId = s.CompanyId,
+                    SiteId = s.SiteId,
+                    StudentCode = s.StudentCode,
+                    FirstName = s.FirstName,
+                    LastName = s.LastName,
+                    DateOfBirth = s.DateOfBirth,
+                    Gender = s.Gender,
+                    Phone = s.Phone,
+                    Email = s.Email,
+                    ParentEmail = s.ParentEmail,
+                    CurrentGradeId = s.CurrentGradeId,
+                    AssignedTeacherId = s.AssignedTeacherId,
+                    Status = s.Status,
+                    RegistrationDate = s.RegistrationDate,
+                    Notes = s.Notes,
+                    IsActive = s.IsActive,
+                    CreatedDate = s.CreatedDate,
+                    UpdatedDate = s.UpdatedDate
+                }).ToList();
+
+                // Load related data menggunakan separate queries
+                var companyIds = students.Select(s => s.CompanyId).Distinct().ToList();
+                var siteIds = students.Select(s => s.SiteId).Distinct().ToList();
+                var gradeIds = students.Where(s => s.CurrentGradeId.HasValue).Select(s => s.CurrentGradeId.Value).Distinct().ToList();
+                var teacherIds = students.Where(s => s.AssignedTeacherId.HasValue).Select(s => s.AssignedTeacherId.Value).Distinct().ToList();
+
+                var companies = await _context.Companies
+                    .AsNoTracking()
+                    .Where(c => companyIds.Contains(c.CompanyId))
+                    .ToDictionaryAsync(c => c.CompanyId, c => c);
+
+                var sites = await _context.Sites
+                    .AsNoTracking()
+                    .Where(s => siteIds.Contains(s.SiteId))
+                    .ToDictionaryAsync(s => s.SiteId, s => s);
+
+                var grades = await _context.Grades
+                    .AsNoTracking()
+                    .Where(g => gradeIds.Contains(g.GradeId))
+                    .ToDictionaryAsync(g => g.GradeId, g => g);
+
+                var teachers = await _context.Teachers
+                    .AsNoTracking()
+                    .Include(t => t.User)
+                    .Where(t => teacherIds.Contains(t.TeacherId))
+                    .ToDictionaryAsync(t => t.TeacherId, t => t);
+
+                // Assign navigation properties secara manual
+                foreach (var student in students)
+                {
+                    student.Company = companies.GetValueOrDefault(student.CompanyId);
+                    student.Site = sites.GetValueOrDefault(student.SiteId);
+                    if (student.CurrentGradeId.HasValue)
+                        student.CurrentGrade = grades.GetValueOrDefault(student.CurrentGradeId.Value);
+                    if (student.AssignedTeacherId.HasValue)
+                        student.AssignedTeacher = teachers.GetValueOrDefault(student.AssignedTeacherId.Value);
+                }
 
                 ViewBag.CurrentCompanyId = currentUser.CompanyId;
                 return View(students);
@@ -74,14 +166,25 @@ namespace KMSI_Projects.Controllers
                 var student = await _context.Students
                     .Include(s => s.Company)
                     .Include(s => s.Site)
-                    .Include(s => s.CurrentGrade)
-                    .Include(s => s.AssignedTeacher)
-                    .ThenInclude(t => t.User)
                     .FirstOrDefaultAsync(m => m.StudentId == id);
 
                 if (student == null)
                 {
                     return Json(new { success = false, message = "Student not found." });
+                }
+
+                // Load related data separately
+                if (student.CurrentGradeId.HasValue)
+                {
+                    student.CurrentGrade = await _context.Grades
+                        .FirstOrDefaultAsync(g => g.GradeId == student.CurrentGradeId.Value);
+                }
+
+                if (student.AssignedTeacherId.HasValue)
+                {
+                    student.AssignedTeacher = await _context.Teachers
+                        .Include(t => t.User)
+                        .FirstOrDefaultAsync(t => t.TeacherId == student.AssignedTeacherId.Value);
                 }
 
                 var viewModel = new StudentDetailsViewModel
@@ -94,12 +197,13 @@ namespace KMSI_Projects.Controllers
                     LastName = student.LastName,
                     FullName = student.FullName,
                     DateOfBirth = student.DateOfBirth,
+                    //Age = student.DateOfBirth.HasValue ?
+                    //    DateTime.Now.Year - student.DateOfBirth.Value.Year -
+                    //    (DateTime.Now.DayOfYear < student.DateOfBirth.Value.DayOfYear ? 1 : 0) : (int?)null,
                     Gender = student.Gender,
+                    //GenderDisplay = student.Gender == "M" ? "Male" : student.Gender == "F" ? "Female" : "Not specified",
                     Phone = student.Phone,
                     Email = student.Email,
-                    Address = student.Address,
-                    ParentName = student.ParentName,
-                    ParentPhone = student.ParentPhone,
                     ParentEmail = student.ParentEmail,
                     CurrentGradeName = student.CurrentGrade?.GradeName,
                     AssignedTeacherName = student.AssignedTeacher?.User?.FullName,
@@ -149,11 +253,14 @@ namespace KMSI_Projects.Controllers
                     .OrderBy(g => g.GradeName)
                     .ToListAsync();
 
-                // Get active teachers
+                // Get active teachers - perbaikan: gunakan FirstName + LastName langsung
                 var teachers = await _context.Teachers
                     .Include(t => t.User)
                     .Where(t => t.IsActive && t.CompanyId == currentUser.CompanyId)
-                    .Select(t => new { t.TeacherId, TeacherName = t.User.FullName + " (" + t.TeacherCode + ")" })
+                    .Select(t => new {
+                        t.TeacherId,
+                        TeacherName = t.User.FirstName + " " + t.User.LastName + " (" + t.TeacherCode + ")"
+                    })
                     .OrderBy(t => t.TeacherName)
                     .ToListAsync();
 
@@ -185,13 +292,25 @@ namespace KMSI_Projects.Controllers
                 var student = await _context.Students
                     .Include(s => s.Company)
                     .Include(s => s.Site)
-                    .Include(s => s.CurrentGrade)
-                    .Include(s => s.AssignedTeacher)
                     .FirstOrDefaultAsync(s => s.StudentId == id);
 
                 if (student == null)
                 {
                     return Json(new { success = false, message = "Student not found." });
+                }
+
+                // Load related data separately
+                if (student.CurrentGradeId.HasValue)
+                {
+                    student.CurrentGrade = await _context.Grades
+                        .FirstOrDefaultAsync(g => g.GradeId == student.CurrentGradeId.Value);
+                }
+
+                if (student.AssignedTeacherId.HasValue)
+                {
+                    student.AssignedTeacher = await _context.Teachers
+                        .Include(t => t.User)
+                        .FirstOrDefaultAsync(t => t.TeacherId == student.AssignedTeacherId.Value);
                 }
 
                 var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
@@ -204,13 +323,6 @@ namespace KMSI_Projects.Controllers
                     .Where(c => c.CompanyId == currentUser.CompanyId || c.ParentCompanyId == currentUser.CompanyId)
                     .Select(c => new { c.CompanyId, c.CompanyName })
                     .OrderBy(c => c.CompanyName)
-                    .ToListAsync();
-
-                // Get sites for selected company
-                var sites = await _context.Sites
-                    .Where(s => s.CompanyId == student.CompanyId && s.IsActive)
-                    .Select(s => new { s.SiteId, s.SiteName })
-                    .OrderBy(s => s.SiteName)
                     .ToListAsync();
 
                 // Get active grades
@@ -240,9 +352,6 @@ namespace KMSI_Projects.Controllers
                     Gender = student.Gender,
                     Phone = student.Phone,
                     Email = student.Email,
-                    Address = student.Address,
-                    ParentName = student.ParentName,
-                    ParentPhone = student.ParentPhone,
                     ParentEmail = student.ParentEmail,
                     CurrentGradeId = student.CurrentGradeId,
                     AssignedTeacherId = student.AssignedTeacherId,
@@ -257,14 +366,13 @@ namespace KMSI_Projects.Controllers
                     success = true,
                     student = viewModel,
                     companies = companies,
-                    sites = sites,
                     grades = grades,
                     teachers = teachers
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error loading edit form for student {StudentId}", id);
+                _logger.LogError(ex, "Error loading edit form data");
                 return Json(new { success = false, message = "Error loading student data." });
             }
         }
@@ -280,11 +388,11 @@ namespace KMSI_Projects.Controllers
                     .OrderBy(s => s.SiteName)
                     .ToListAsync();
 
-                return Json(new { success = true, data = sites });
+                return Json(new { success = true, sites = sites });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting sites for company {CompanyId}", companyId);
+                _logger.LogError(ex, "Error loading sites for company {CompanyId}", companyId);
                 return Json(new { success = false, message = "Error loading sites." });
             }
         }
@@ -292,13 +400,13 @@ namespace KMSI_Projects.Controllers
         // POST: Student/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([FromBody] StudentViewModel model)
+        public async Task<IActionResult> Create(StudentViewModel model)
         {
             try
             {
                 if (ModelState.IsValid)
                 {
-                    // Check if student code already exists
+                    // Check for duplicate student code
                     var existingStudent = await _context.Students
                         .FirstOrDefaultAsync(s => s.StudentCode == model.StudentCode);
 
@@ -313,23 +421,20 @@ namespace KMSI_Projects.Controllers
                     {
                         CompanyId = model.CompanyId,
                         SiteId = model.SiteId,
-                        StudentCode = model.StudentCode,
+                        StudentCode = model.StudentCode.ToUpper(),
                         FirstName = model.FirstName,
                         LastName = model.LastName,
                         DateOfBirth = model.DateOfBirth,
                         Gender = model.Gender,
                         Phone = model.Phone,
                         Email = model.Email,
-                        Address = model.Address,
-                        ParentName = model.ParentName,
-                        ParentPhone = model.ParentPhone,
                         ParentEmail = model.ParentEmail,
                         CurrentGradeId = model.CurrentGradeId,
                         AssignedTeacherId = model.AssignedTeacherId,
                         Status = model.Status,
                         RegistrationDate = model.RegistrationDate,
                         Notes = model.Notes,
-                        IsActive = model.IsActive,
+                        IsActive = true,
                         CreatedBy = currentUserId,
                         CreatedDate = DateTime.Now
                     };
@@ -337,12 +442,21 @@ namespace KMSI_Projects.Controllers
                     _context.Students.Add(student);
                     await _context.SaveChangesAsync();
 
-                    _logger.LogInformation("Student {StudentCode} created successfully", model.StudentCode);
-                    return Json(new { success = true, message = "Student created successfully!" });
+                    return Json(new
+                    {
+                        success = true,
+                        message = "Student created successfully!",
+                        data = new
+                        {
+                            studentId = student.StudentId,
+                            studentCode = student.StudentCode,
+                            fullName = student.FullName
+                        }
+                    });
                 }
 
                 var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
-                return Json(new { success = false, message = "Please correct the validation errors.", errors = errors });
+                return Json(new { success = false, message = "Validation failed.", errors = errors });
             }
             catch (Exception ex)
             {
@@ -354,7 +468,7 @@ namespace KMSI_Projects.Controllers
         // POST: Student/Edit
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit([FromBody] StudentViewModel model)
+        public async Task<IActionResult> Edit(StudentViewModel model)
         {
             try
             {
@@ -366,7 +480,7 @@ namespace KMSI_Projects.Controllers
                         return Json(new { success = false, message = "Student not found." });
                     }
 
-                    // Check if student code already exists (excluding current student)
+                    // Check for duplicate student code (excluding current student)
                     var existingStudent = await _context.Students
                         .FirstOrDefaultAsync(s => s.StudentCode == model.StudentCode && s.StudentId != model.StudentId);
 
@@ -380,16 +494,13 @@ namespace KMSI_Projects.Controllers
                     // Update student properties
                     student.CompanyId = model.CompanyId;
                     student.SiteId = model.SiteId;
-                    student.StudentCode = model.StudentCode;
+                    student.StudentCode = model.StudentCode.ToUpper();
                     student.FirstName = model.FirstName;
                     student.LastName = model.LastName;
                     student.DateOfBirth = model.DateOfBirth;
                     student.Gender = model.Gender;
                     student.Phone = model.Phone;
                     student.Email = model.Email;
-                    student.Address = model.Address;
-                    student.ParentName = model.ParentName;
-                    student.ParentPhone = model.ParentPhone;
                     student.ParentEmail = model.ParentEmail;
                     student.CurrentGradeId = model.CurrentGradeId;
                     student.AssignedTeacherId = model.AssignedTeacherId;
@@ -402,21 +513,30 @@ namespace KMSI_Projects.Controllers
 
                     await _context.SaveChangesAsync();
 
-                    _logger.LogInformation("Student {StudentCode} updated successfully", model.StudentCode);
-                    return Json(new { success = true, message = "Student updated successfully!" });
+                    return Json(new
+                    {
+                        success = true,
+                        message = "Student updated successfully!",
+                        data = new
+                        {
+                            studentId = student.StudentId,
+                            studentCode = student.StudentCode,
+                            fullName = student.FullName
+                        }
+                    });
                 }
 
                 var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
-                return Json(new { success = false, message = "Please correct the validation errors.", errors = errors });
+                return Json(new { success = false, message = "Validation failed.", errors = errors });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating student {StudentId}", model.StudentId);
+                _logger.LogError(ex, "Error updating student");
                 return Json(new { success = false, message = "An error occurred while updating the student." });
             }
         }
 
-        // POST: Student/Delete/5
+        // POST: Student/Delete
         [HttpPost]
         public async Task<IActionResult> Delete(int id)
         {
@@ -428,29 +548,18 @@ namespace KMSI_Projects.Controllers
                     return Json(new { success = false, message = "Student not found." });
                 }
 
-                // Check if student has related records
-                var hasSchedules = await _context.ClassSchedules.AnyAsync(cs => cs.StudentId == id);
-                var hasAttendances = await _context.Attendances.AnyAsync(a => a.StudentId == id);
-                var hasRegistrations = await _context.Registrations.AnyAsync(r => r.StudentId == id);
-
-                if (hasSchedules || hasAttendances || hasRegistrations)
-                {
-                    return Json(new { success = false, message = "Cannot delete student with existing schedules, attendances, or registrations." });
-                }
-
-                var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                // Soft delete - set IsActive to false
                 student.IsActive = false;
-                student.UpdatedBy = currentUserId;
+                student.UpdatedBy = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
                 student.UpdatedDate = DateTime.Now;
 
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation("Student {StudentCode} deactivated successfully", student.StudentCode);
-                return Json(new { success = true, message = "Student deactivated successfully!" });
+                return Json(new { success = true, message = "Student deleted successfully!" });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting student {StudentId}", id);
+                _logger.LogError(ex, "Error deleting student");
                 return Json(new { success = false, message = "An error occurred while deleting the student." });
             }
         }

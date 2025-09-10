@@ -1,146 +1,100 @@
 ﻿@model IEnumerable<KMSI_Projects.Models.Student>
 
 @{
-    ViewData["Title"] = "Master Student";
+    ViewData["Title"] = "Students";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<!-- Anti-forgery token for production -->
-@Html.AntiForgeryToken()
-
-<div class="container-fluid">
+<div class="content-wrapper">
     <div class="row">
-        <div class="col-12">
+        <div class="col-lg-12 grid-margin stretch-card">
             <div class="card">
-                <div class="card-header">
-                    <div class="row align-items-center">
-                        <div class="col">
-                            <h3 class="card-title mb-0">
-                                <i class="fas fa-user-graduate me-2"></i>Student Management
-                            </h3>
-                        </div>
-                        <div class="col-auto">
-                            <button type="button" class="btn btn-primary" onclick="openCreateModal()">
-                                <i class="fas fa-plus me-2"></i>Add New Student
-                            </button>
-                        </div>
-                    </div>
-                </div>
                 <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="card-title mb-0">Students Management</h4>
+                        <button type="button" class="btn btn-primary" onclick="openCreateModal()" data-bs-toggle="modal" data-bs-target="#studentModal">
+                            <i class="fas fa-plus me-2"></i>Add New Student
+                        </button>
+                    </div>
+
+                    @if (TempData["SuccessMessage"] != null)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            @TempData["SuccessMessage"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    @if (TempData["ErrorMessage"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            @TempData["ErrorMessage"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
                     <div class="table-responsive">
-                        <table class="table table-hover" id="studentTable">
-                            <thead class="table-dark">
+                        <table class="table table-striped" id="studentTable">
+                            <thead>
                                 <tr>
-                                    <th width="10%">Student Code</th>
-                                    <th width="15%">Student Name</th>
-                                    <th width="10%">Gender</th>
-                                    <th width="10%">Age</th>
-                                    <th width="10%">Phone</th>
-                                    <th width="10%">Parent Name</th>
-                                    <th width="10%">Grade</th>
-                                    <th width="10%">Teacher</th>
-                                    <th width="10%">Status</th>
-                                    <th width="5%">Actions</th>
+                                    <th>Student Code</th>
+                                    <th>Full Name</th>
+                                    <th>Company</th>
+                                    <th>Site</th>
+                                    <th>Current Grade</th>
+                                    <th>Assigned Teacher</th>
+                                    <th>Registration Date</th>
+                                    <th>Status</th>
+                                    <th>Contact</th>
+                                    <th width="120">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var item in Model)
+                                @foreach (var student in Model)
                                 {
                                     <tr>
+                                        <td>@student.StudentCode</td>
+                                        <td>@student.FullName</td>
+                                        <td>@student.Company?.CompanyName</td>
+                                        <td>@student.Site?.SiteName</td>
+                                        <td>@(student.CurrentGrade?.GradeName ?? "Not assigned")</td>
+                                        <td>@(student.AssignedTeacher?.User?.FirstName + " " + student.AssignedTeacher?.User?.LastName ?? "Not assigned")</td>
+                                        <td>@student.RegistrationDate.ToString("dd/MM/yyyy")</td>
                                         <td>
-                                            <strong>@Html.DisplayFor(modelItem => item.StudentCode)</strong>
+                                            <span class="badge bg-@(student.IsActive ? "success" : "danger")">
+                                                @student.Status
+                                            </span>
                                         </td>
-                                        <td>@Html.DisplayFor(modelItem => item.FullName)</td>
                                         <td>
-                                            @if (!string.IsNullOrEmpty(item.Gender))
+                                            @if (!string.IsNullOrEmpty(student.Phone) || !string.IsNullOrEmpty(student.Email))
                                             {
-                                                <span class="badge bg-info">@(item.Gender == "M" ? "Male" : "Female")</span>
+                                                <div class="d-flex flex-column">
+                                                    @if (!string.IsNullOrEmpty(student.Phone))
+                                                    {
+                                                        <small><i class="fas fa-phone text-muted me-1"></i>@student.Phone</small>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(student.Email))
+                                                    {
+                                                        <small><i class="fas fa-envelope text-muted me-1"></i>@student.Email</small>
+                                                    }
+                                                </div>
                                             }
                                             else
                                             {
-                                                <span class="text-muted">Not specified</span>
-                                            }
-                                        </td>
-                                        <td>
-                                            @if (item.DateOfBirth.HasValue)
-                                            {
-                                                var today = DateTime.Today;
-                                                var age = today.Year - item.DateOfBirth.Value.Year;
-                                                if (item.DateOfBirth.Value.Date > today.AddYears(-age)) { age--; }
-                                                <span class="text-muted">@age years</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted">-</span>
-                                            }
-                                        </td>
-                                        <td>
-                                            @if (!string.IsNullOrEmpty(item.Phone))
-                                            {
-                                                <span>@item.Phone</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted">-</span>
-                                            }
-                                        </td>
-                                        <td>
-                                            @if (!string.IsNullOrEmpty(item.ParentName))
-                                            {
-                                                <span>@item.ParentName</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted">-</span>
-                                            }
-                                        </td>
-                                        <td>
-                                            @if (item.CurrentGrade != null)
-                                            {
-                                                <span class="badge bg-primary">@item.CurrentGrade.GradeName</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted">Not assigned</span>
-                                            }
-                                        </td>
-                                        <td>
-                                            @if (item.AssignedTeacher != null)
-                                            {
-                                                <span>@item.AssignedTeacher.User.FullName</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted">Not assigned</span>
-                                            }
-                                        </td>
-                                        <td>
-                                            @if (item.IsActive)
-                                            {
-                                                <span class="badge bg-success">@item.Status</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="badge bg-danger">Inactive</span>
+                                                <span class="text-muted">No contact</span>
                                             }
                                         </td>
                                         <td>
                                             <div class="btn-group" role="group">
-                                                <button type="button" class="btn btn-outline-info btn-sm"
-                                                        onclick="viewDetails(@item.StudentId)" title="View Details">
+                                                <button type="button" class="btn btn-sm btn-outline-info" onclick="viewDetails(@student.StudentId)" data-bs-toggle="modal" data-bs-target="#detailsModal" title="View Details">
                                                     <i class="fas fa-eye"></i>
                                                 </button>
-                                                <button type="button" class="btn btn-outline-primary btn-sm"
-                                                        onclick="openEditModal(@item.StudentId)" title="Edit Student">
+                                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEditModal(@student.StudentId)" data-bs-toggle="modal" data-bs-target="#studentModal" title="Edit">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
-                                                @if (item.IsActive)
-                                                {
-                                                    <button type="button" class="btn btn-outline-danger btn-sm"
-                                                            onclick="deleteStudent(@item.StudentId)" title="Delete Student">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                }
+                                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteStudent(@student.StudentId)" title="Delete">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -154,24 +108,23 @@
     </div>
 </div>
 
-<!-- Create/Edit Modal -->
+<!-- Student Modal -->
 <div class="modal fade" id="studentModal" tabindex="-1" aria-labelledby="studentModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="studentModalLabel">Add New Student</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="studentForm">
-                @Html.AntiForgeryToken()
-                <div class="modal-body">
-                    <input type="hidden" id="studentId" value="0" />
+            <div class="modal-body">
+                <form id="studentForm">
+                    <input type="hidden" id="studentId" name="StudentId" value="0">
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="studentCode" class="form-label">Student Code <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="studentCode" name="StudentCode"
-                                   placeholder="e.g., STU-001" maxlength="20" required style="text-transform: uppercase">
+                                   placeholder="e.g., KMI-2401-01530" maxlength="20" required>
                             <div class="invalid-feedback"></div>
                         </div>
                         <div class="col-md-6 mb-3">
@@ -223,31 +176,7 @@
                         <div class="col-md-6 mb-3">
                             <label for="email" class="form-label">Email</label>
                             <input type="email" class="form-control" id="email" name="Email"
-                                   placeholder="Email Address" maxlength="100">
-                            <div class="invalid-feedback"></div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label for="address" class="form-label">Address</label>
-                            <textarea class="form-control" id="address" name="Address" rows="2"
-                                      placeholder="Student's Address" maxlength="500"></textarea>
-                            <div class="invalid-feedback"></div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="parentName" class="form-label">Parent/Guardian Name</label>
-                            <input type="text" class="form-control" id="parentName" name="ParentName"
-                                   placeholder="Parent/Guardian Name" maxlength="100">
-                            <div class="invalid-feedback"></div>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="parentPhone" class="form-label">Parent Phone</label>
-                            <input type="tel" class="form-control" id="parentPhone" name="ParentPhone"
-                                   placeholder="Parent Phone Number" maxlength="20">
+                                   placeholder="email@example.com" maxlength="100">
                             <div class="invalid-feedback"></div>
                         </div>
                     </div>
@@ -256,7 +185,7 @@
                         <div class="col-md-6 mb-3">
                             <label for="parentEmail" class="form-label">Parent Email</label>
                             <input type="email" class="form-control" id="parentEmail" name="ParentEmail"
-                                   placeholder="Parent Email Address" maxlength="100">
+                                   placeholder="parent@example.com" maxlength="100">
                             <div class="invalid-feedback"></div>
                         </div>
                         <div class="col-md-6 mb-3">
@@ -306,33 +235,20 @@
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label for="notes" class="form-label">Notes</label>
-                            <textarea class="form-control" id="notes" name="Notes" rows="3"
-                                      placeholder="Additional notes about the student" maxlength="1000"></textarea>
-                            <div class="invalid-feedback"></div>
-                        </div>
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="Notes" rows="3"
+                                  placeholder="Additional notes about the student" maxlength="1000"></textarea>
+                        <div class="invalid-feedback"></div>
                     </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="isActive" name="IsActive" checked>
-                                <label class="form-check-label" for="isActive">
-                                    Active Status
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="saveButton">
-                        <i class="fas fa-save me-2"></i>Save Student
-                    </button>
-                </div>
-            </form>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveButton" onclick="KMSI.Student.submitForm()">
+                    <i class="fas fa-save me-2"></i>Save Student
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -406,94 +322,59 @@
                     }
                 } catch (error) {
                     console.error('Error initializing DataTable:', error);
-                    KMSI.showToast('Error initializing table. Some features may not work properly.', 'error');
+                    KMSI.showToast('Error initializing table. Some features may not work properly.', 'warning');
                 }
             },
 
             // Reset form
             resetForm: function() {
-                $('#studentForm')[0].reset();
-                $('#studentId').val(0);
-                $('.invalid-feedback').hide();
-                $('.form-control').removeClass('is-invalid');
-                $('.form-select').removeClass('is-invalid');
-                // Set default registration date to today
-                $('#registrationDate').val(new Date().toISOString().split('T')[0]);
-                // Clear dropdowns
-                $('#companyId').empty().append('<option value="">Select Company</option>');
-                $('#siteId').empty().append('<option value="">Select Site</option>');
-                $('#currentGradeId').empty().append('<option value="">Select Grade</option>');
-                $('#assignedTeacherId').empty().append('<option value="">Select Teacher</option>');
+                try {
+                    $('#studentForm')[0].reset();
+                    $('#studentId').val('0');
+                    $('.form-control, .form-select').removeClass('is-invalid');
+                    $('.invalid-feedback').hide();
+
+                    // Clear dropdown options except default
+                    $('#companyId option:not(:first)').remove();
+                    $('#siteId option:not(:first)').remove();
+                    $('#currentGradeId option:not(:first)').remove();
+                    $('#assignedTeacherId option:not(:first)').remove();
+
+                    // Set default registration date to today
+                    $('#registrationDate').val(new Date().toISOString().split('T')[0]);
+                } catch (error) {
+                    console.error('Error resetting form:', error);
+                }
             },
 
             // Submit form
             submitForm: function() {
+                if (!this.validateForm()) {
+                    return;
+                }
+
                 try {
-                    if (!this.validateForm()) {
-                        return;
-                    }
-
-                    const formData = {
-                        StudentId: parseInt($('#studentId').val()) || 0,
-                        CompanyId: parseInt($('#companyId').val()),
-                        SiteId: parseInt($('#siteId').val()),
-                        StudentCode: $('#studentCode').val(),
-                        FirstName: $('#firstName').val(),
-                        LastName: $('#lastName').val(),
-                        DateOfBirth: $('#dateOfBirth').val() || null,
-                        Gender: $('#gender').val() || null,
-                        Phone: $('#phone').val() || null,
-                        Email: $('#email').val() || null,
-                        Address: $('#address').val() || null,
-                        ParentName: $('#parentName').val() || null,
-                        ParentPhone: $('#parentPhone').val() || null,
-                        ParentEmail: $('#parentEmail').val() || null,
-                        CurrentGradeId: $('#currentGradeId').val() ? parseInt($('#currentGradeId').val()) : null,
-                        AssignedTeacherId: $('#assignedTeacherId').val() ? parseInt($('#assignedTeacherId').val()) : null,
-                        Status: $('#status').val(),
-                        RegistrationDate: $('#registrationDate').val(),
-                        Notes: $('#notes').val() || null,
-                        IsActive: $('#isActive').is(':checked')
-                    };
-
-                    // Build production-ready URL
-                    const url = this.isEditMode ?
-                        KMSI.Config.buildUrl('/Student/Edit') :
+                    const formData = $('#studentForm').serialize();
+                    const url = this.isEditMode ? 
+                        KMSI.Config.buildUrl('/Student/Edit') : 
                         KMSI.Config.buildUrl('/Student/Create');
 
-                    const self = this;
+                    $('#saveButton').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Saving...');
 
-                    // Production-ready AJAX call dengan comprehensive error handling
-                    $.ajax({
-                        url: url,
-                        type: 'POST',
-                        data: JSON.stringify(formData),
-                        contentType: 'application/json; charset=utf-8',
-                        headers: {
-                            'RequestVerificationToken': KMSI.Config.getAntiForgeryToken()
-                        },
-                        timeout: 30000, // 30 seconds
-                        beforeSend: function() {
-                            $('#saveButton').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Saving...');
-                        },
-                        success: function(response) {
-                            if (response && response.success) {
+                    $.post(url, formData)
+                        .done(function(response) {
+                            if (response.success) {
                                 KMSI.showToast(response.message || 'Student saved successfully!', 'success');
                                 $('#studentModal').modal('hide');
-
-                                // Refresh page instead of partial update untuk consistency
                                 setTimeout(function() {
-                                    window.location.reload();
+                                    location.reload();
                                 }, 1000);
                             } else {
-                                KMSI.showToast(response?.message || 'Failed to save student', 'error');
-                                if (response?.errors) {
-                                    console.error('Validation errors:', response.errors);
-                                }
+                                KMSI.showToast(response.message || 'Failed to save student', 'error');
                             }
-                        },
-                        error: function(xhr, status, error) {
-                            let message = 'An error occurred while saving the student. ';
+                        })
+                        .fail(function(xhr, status, error) {
+                            let message = 'Failed to save student. ';
 
                             if (status === 'timeout') {
                                 message += 'Request timed out.';
@@ -509,11 +390,10 @@
 
                             KMSI.showToast(message, 'error');
                             console.error('Student save error:', xhr, status, error);
-                        },
-                        complete: function() {
+                        })
+                        .always(function() {
                             $('#saveButton').prop('disabled', false).html('<i class="fas fa-save me-2"></i>Save Student');
-                        }
-                    });
+                        });
 
                 } catch (error) {
                     console.error('Error in submitForm:', error);
@@ -551,7 +431,7 @@
 
                 // Email validation
                 var email = $('#email').val();
-                if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                if (email && !/^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/.test(email)) {
                     $('#email').addClass('is-invalid');
                     $('#email').siblings('.invalid-feedback').text('Please enter a valid email address').show();
                     isValid = false;
@@ -559,7 +439,7 @@
 
                 // Parent email validation
                 var parentEmail = $('#parentEmail').val();
-                if (parentEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(parentEmail)) {
+                if (parentEmail && !/^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/.test(parentEmail)) {
                     $('#parentEmail').addClass('is-invalid');
                     $('#parentEmail').siblings('.invalid-feedback').text('Please enter a valid email address').show();
                     isValid = false;
@@ -618,7 +498,8 @@
                         KMSI.showToast(response.message || 'Failed to load form data', 'error');
                     }
                 })
-                .fail(function(xhr) {
+                .fail(function(xhr, status, error) {
+                    console.error('Create form data request failed:', xhr, status, error);
                     KMSI.showToast('Failed to load form data', 'error');
                 });
         }
@@ -627,77 +508,72 @@
             $.get(KMSI.Config.buildUrl('/Student/GetEditForm/' + id))
                 .done(function(response) {
                     if (response.success) {
+                        var student = response.student;
+
+                        // Populate form fields
+                        $('#studentId').val(student.studentId);
+                        $('#studentCode').val(student.studentCode);
+                        $('#firstName').val(student.firstName);
+                        $('#lastName').val(student.lastName);
+                        $('#dateOfBirth').val(student.dateOfBirth ? student.dateOfBirth.split('T')[0] : '');
+                        $('#gender').val(student.gender || '');
+                        $('#phone').val(student.phone || '');
+                        $('#email').val(student.email || '');
+                        $('#parentEmail').val(student.parentEmail || '');
+                        $('#registrationDate').val(student.registrationDate.split('T')[0]);
+                        $('#status').val(student.status);
+                        $('#notes').val(student.notes || '');
+
                         // Populate companies dropdown
                         $.each(response.companies, function(index, company) {
-                            $('#companyId').append($('<option></option>').val(company.companyId).text(company.companyName));
+                            var selected = company.companyId === student.companyId ? 'selected' : '';
+                            $('#companyId').append($('<option ' + selected + '></option>').val(company.companyId).text(company.companyName));
                         });
 
-                        // Populate sites dropdown
-                        $.each(response.sites, function(index, site) {
-                            $('#siteId').append($('<option></option>').val(site.siteId).text(site.siteName));
-                        });
+                        // Load sites for selected company
+                        if (student.companyId) {
+                            loadSitesByCompany(student.companyId, student.siteId);
+                        }
 
                         // Populate grades dropdown
                         $.each(response.grades, function(index, grade) {
-                            $('#currentGradeId').append($('<option></option>').val(grade.gradeId).text(grade.gradeName));
+                            var selected = grade.gradeId === student.currentGradeId ? 'selected' : '';
+                            $('#currentGradeId').append($('<option ' + selected + '></option>').val(grade.gradeId).text(grade.gradeName));
                         });
 
                         // Populate teachers dropdown
                         $.each(response.teachers, function(index, teacher) {
-                            $('#assignedTeacherId').append($('<option></option>').val(teacher.teacherId).text(teacher.teacherName));
+                            var selected = teacher.teacherId === student.assignedTeacherId ? 'selected' : '';
+                            $('#assignedTeacherId').append($('<option ' + selected + '></option>').val(teacher.teacherId).text(teacher.teacherName));
                         });
-
-                        // Fill form with student data
-                        var student = response.student;
-                        $('#studentId').val(student.studentId);
-                        $('#companyId').val(student.companyId);
-                        $('#siteId').val(student.siteId);
-                        $('#studentCode').val(student.studentCode);
-                        $('#firstName').val(student.firstName);
-                        $('#lastName').val(student.lastName);
-                        $('#dateOfBirth').val(student.dateOfBirth ? new Date(student.dateOfBirth).toISOString().split('T')[0] : '');
-                        $('#gender').val(student.gender || '');
-                        $('#phone').val(student.phone || '');
-                        $('#email').val(student.email || '');
-                        $('#address').val(student.address || '');
-                        $('#parentName').val(student.parentName || '');
-                        $('#parentPhone').val(student.parentPhone || '');
-                        $('#parentEmail').val(student.parentEmail || '');
-                        $('#currentGradeId').val(student.currentGradeId || '');
-                        $('#assignedTeacherId').val(student.assignedTeacherId || '');
-                        $('#status').val(student.status);
-                        $('#registrationDate').val(new Date(student.registrationDate).toISOString().split('T')[0]);
-                        $('#notes').val(student.notes || '');
-                        $('#isActive').prop('checked', student.isActive);
 
                         $('#studentModal').modal('show');
                     } else {
                         KMSI.showToast(response.message || 'Failed to load student data', 'error');
                     }
                 })
-                .fail(function() {
+                .fail(function(xhr, status, error) {
+                    console.error('Edit form data request failed:', xhr, status, error);
                     KMSI.showToast('Failed to load student data', 'error');
                 });
         }
 
-        function loadSitesByCompany(companyId) {
+        function loadSitesByCompany(companyId, selectedSiteId) {
             if (!companyId) {
-                $('#siteId').empty().append('<option value="">Select Site</option>');
+                $('#siteId').html('<option value="">Select Site</option>');
                 return;
             }
 
-            const companyIdInt = parseInt(companyId);
-            const url = KMSI.Config.buildUrl('/Student/GetSitesByCompany?companyId=' + companyIdInt);
-
-            $.get(url)
+            $.get(KMSI.Config.buildUrl('/Student/GetSitesByCompany?companyId=' + companyId))
                 .done(function(response) {
                     if (response.success) {
-                        $('#siteId').empty().append('<option value="">Select Site</option>');
-                        $.each(response.data, function(index, site) {
-                            $('#siteId').append($('<option></option>').val(site.siteId).text(site.siteName));
+                        $('#siteId').html('<option value="">Select Site</option>');
+                        $.each(response.sites, function(index, site) {
+                            var selected = selectedSiteId && site.siteId === selectedSiteId ? 'selected' : '';
+                            $('#siteId').append($('<option ' + selected + '></option>').val(site.siteId).text(site.siteName));
                         });
                     } else {
-                        KMSI.showToast('Failed to load sites: ' + (response.message || 'Unknown error'), 'error');
+                        KMSI.showToast(response.message || 'Unknown error', 'error');
                     }
                 })
                 .fail(function(xhr, status, error) {
@@ -732,30 +608,9 @@
                                         <tr><td><strong>Assigned Teacher:</strong></td><td>${student.assignedTeacherName || 'Not assigned'}</td></tr>
                                         <tr><td><strong>Phone:</strong></td><td>${student.phone || 'Not specified'}</td></tr>
                                         <tr><td><strong>Email:</strong></td><td>${student.email || 'Not specified'}</td></tr>
+                                        <tr><td><strong>Parent Email:</strong></td><td>${student.parentEmail || 'Not specified'}</td></tr>
+                                        <tr><td><strong>Notes:</strong></td><td>${student.notes || 'No notes'}</td></tr>
                                     </table>
-                                </div>
-                            </div>
-                            <div class="row mt-3">
-                                <div class="col-md-6">
-                                    <h6>Contact Information</h6>
-                                    <p>${student.contactInfo || 'No contact information'}</p>
-                                </div>
-                                <div class="col-md-6">
-                                    <h6>Parent/Guardian Information</h6>
-                                    <p><strong>Name:</strong> ${student.parentName || 'Not specified'}</p>
-                                    <p><strong>Contact:</strong> ${student.parentContactInfo || 'Not specified'}</p>
-                                </div>
-                            </div>
-                            <div class="row mt-3">
-                                <div class="col-12">
-                                    <h6>Address</h6>
-                                    <p>${student.address || 'Not specified'}</p>
-                                </div>
-                            </div>
-                            <div class="row mt-3">
-                                <div class="col-12">
-                                    <h6>Notes</h6>
-                                    <p>${student.notes || 'No notes'}</p>
                                 </div>
                             </div>
                         `;
@@ -765,42 +620,40 @@
                         KMSI.showToast(response.message || 'Failed to load student details', 'error');
                     }
                 })
-                .fail(function() {
+                .fail(function(xhr, status, error) {
+                    console.error('Details request failed:', xhr, status, error);
                     KMSI.showToast('Failed to load student details', 'error');
                 });
         }
 
         function deleteStudent(id) {
             if (confirm('Are you sure you want to delete this student? This action cannot be undone.')) {
-                $.ajax({
-                    url: KMSI.Config.buildUrl('/Student/Delete/' + id),
-                    type: 'POST',
-                    headers: {
-                        'RequestVerificationToken': KMSI.Config.getAntiForgeryToken()
-                    },
-                    success: function(response) {
+                $.post(KMSI.Config.buildUrl('/Student/Delete'), { id: id })
+                    .done(function(response) {
                         if (response.success) {
-                            KMSI.showToast(response.message, 'success');
-                            location.reload();
+                            KMSI.showToast(response.message || 'Student deleted successfully!', 'success');
+                            setTimeout(function() {
+                                location.reload();
+                            }, 1000);
                         } else {
                             KMSI.showToast(response.message || 'Failed to delete student', 'error');
                         }
-                    },
-                    error: function() {
-                        KMSI.showToast('An error occurred while deleting the student', 'error');
-                    }
-                });
+                    })
+                    .fail(function(xhr, status, error) {
+                        console.error('Delete request failed:', xhr, status, error);
+                        KMSI.showToast('Failed to delete student', 'error');
+                    });
             }
         }
 
-        // Initialize on document ready
+        // Initialize when document is ready
         $(document).ready(function() {
             try {
                 KMSI.Student.init();
-                console.log('Student module initialized successfully');
+                console.log('KMSI Student module initialized successfully');
             } catch (error) {
-                console.error('Error initializing Student module:', error);
-                KMSI.showToast('Warning: Some features may not work properly.', 'warning');
+                console.error('Error initializing KMSI Student module:', error);
+                KMSI.showToast('Some features may not work properly. Please refresh the page.', 'warning');
             }
         });
     </script>
