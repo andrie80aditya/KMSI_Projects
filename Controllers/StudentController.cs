@@ -25,7 +25,6 @@ namespace KMSI_Projects.Controllers
         }
 
         // GET: Student
-        // GET: Student
         public async Task<IActionResult> Index()
         {
             try
@@ -197,11 +196,7 @@ namespace KMSI_Projects.Controllers
                     LastName = student.LastName,
                     FullName = student.FullName,
                     DateOfBirth = student.DateOfBirth,
-                    //Age = student.DateOfBirth.HasValue ?
-                    //    DateTime.Now.Year - student.DateOfBirth.Value.Year -
-                    //    (DateTime.Now.DayOfYear < student.DateOfBirth.Value.DayOfYear ? 1 : 0) : (int?)null,
                     Gender = student.Gender,
-                    //GenderDisplay = student.Gender == "M" ? "Male" : student.Gender == "F" ? "Female" : "Not specified",
                     Phone = student.Phone,
                     Email = student.Email,
                     ParentEmail = student.ParentEmail,
@@ -246,30 +241,10 @@ namespace KMSI_Projects.Controllers
                     .OrderBy(c => c.CompanyName)
                     .ToListAsync();
 
-                // Get active grades
-                var grades = await _context.Grades
-                    .Where(g => g.IsActive)
-                    .Select(g => new { g.GradeId, g.GradeName })
-                    .OrderBy(g => g.GradeName)
-                    .ToListAsync();
-
-                // Get active teachers - perbaikan: gunakan FirstName + LastName langsung
-                var teachers = await _context.Teachers
-                    .Include(t => t.User)
-                    .Where(t => t.IsActive && t.CompanyId == currentUser.CompanyId)
-                    .Select(t => new {
-                        t.TeacherId,
-                        TeacherName = t.User.FirstName + " " + t.User.LastName + " (" + t.TeacherCode + ")"
-                    })
-                    .OrderBy(t => t.TeacherName)
-                    .ToListAsync();
-
                 return Json(new
                 {
                     success = true,
-                    companies = companies,
-                    grades = grades,
-                    teachers = teachers
+                    companies = companies
                 });
             }
             catch (Exception ex)
@@ -325,21 +300,6 @@ namespace KMSI_Projects.Controllers
                     .OrderBy(c => c.CompanyName)
                     .ToListAsync();
 
-                // Get active grades
-                var grades = await _context.Grades
-                    .Where(g => g.IsActive)
-                    .Select(g => new { g.GradeId, g.GradeName })
-                    .OrderBy(g => g.GradeName)
-                    .ToListAsync();
-
-                // Get active teachers
-                var teachers = await _context.Teachers
-                    .Include(t => t.User)
-                    .Where(t => t.IsActive && t.CompanyId == student.CompanyId)
-                    .Select(t => new { t.TeacherId, TeacherName = t.User.FullName + " (" + t.TeacherCode + ")" })
-                    .OrderBy(t => t.TeacherName)
-                    .ToListAsync();
-
                 var viewModel = new StudentViewModel
                 {
                     StudentId = student.StudentId,
@@ -365,9 +325,7 @@ namespace KMSI_Projects.Controllers
                 {
                     success = true,
                     student = viewModel,
-                    companies = companies,
-                    grades = grades,
-                    teachers = teachers
+                    companies = companies
                 });
             }
             catch (Exception ex)
@@ -394,6 +352,58 @@ namespace KMSI_Projects.Controllers
             {
                 _logger.LogError(ex, "Error loading sites for company {CompanyId}", companyId);
                 return Json(new { success = false, message = "Error loading sites." });
+            }
+        }
+
+        // NEW: GET: Student/GetGradesByCompany/5
+        public async Task<IActionResult> GetGradesByCompany(int companyId)
+        {
+            try
+            {
+                var grades = await _context.Grades
+                    .Where(g => g.CompanyId == companyId && g.IsActive)
+                    .Select(g => new { g.GradeId, g.GradeName })
+                    .OrderBy(g => g.GradeName)
+                    .ToListAsync();
+
+                return Json(new { success = true, grades = grades });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading grades for company {CompanyId}", companyId);
+                return Json(new { success = false, message = "Error loading grades." });
+            }
+        }
+
+        // NEW: GET: Student/GetTeachersByCompanyAndSite
+        public async Task<IActionResult> GetTeachersByCompanyAndSite(int companyId, int siteId)
+        {
+            try
+            {
+                var teachersQuery = _context.Teachers
+                    .Include(t => t.User)
+                    .Where(t => t.IsActive && t.CompanyId == companyId && t.SiteId == siteId);
+
+                // Filter by site if provided
+                //if (siteId.HasValue && siteId.Value > 0)
+                //{
+                //    teachersQuery = teachersQuery.Where(t => t.SiteId == siteId.Value);
+                //}
+
+                var teachers = await teachersQuery
+                    .Select(t => new {
+                        t.TeacherId,
+                        TeacherName = t.User.FirstName + " " + t.User.LastName + " (" + t.TeacherCode + ")"
+                    })
+                    .OrderBy(t => t.TeacherName)
+                    .ToListAsync();
+
+                return Json(new { success = true, teachers = teachers });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading teachers for company {CompanyId} and site {SiteId}", companyId, siteId);
+                return Json(new { success = false, message = "Error loading teachers." });
             }
         }
 
