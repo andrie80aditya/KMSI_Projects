@@ -1,0 +1,653 @@
+﻿@model IEnumerable<KMSI_Projects.Models.Book>
+
+@{
+    ViewData["Title"] = "Master Books";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<!-- Anti-forgery token untuk production -->
+@Html.AntiForgeryToken()
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h3 class="card-title mb-0">
+                                <i class="fas fa-book me-2"></i>Books Management
+                            </h3>
+                        </div>
+                        <div class="col-auto">
+                            <button type="button" class="btn btn-primary" onclick="openCreateModal()">
+                                <i class="fas fa-plus me-2"></i>Add New Book
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="bookTable">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th width="10%">Book Code</th>
+                                    <th width="20%">Book Title</th>
+                                    <th width="15%">Company</th>
+                                    <th width="12%">Author</th>
+                                    <th width="10%">Category</th>
+                                    <th width="10%">Stock</th>
+                                    <th width="8%">Status</th>
+                                    <th width="15%">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model)
+                                {
+                                    <tr>
+                                        <td>
+                                            <strong>@Html.DisplayFor(modelItem => item.BookCode)</strong>
+                                        </td>
+                                        <td>@Html.DisplayFor(modelItem => item.BookTitle)</td>
+                                        <td>
+                                            <span class="badge bg-info">@item.Company.CompanyCode</span>
+                                            <br><small class="text-muted">@item.Company.CompanyName</small>
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(item.Author))
+                                            {
+                                                @item.Author
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">No author</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(item.Category))
+                                            {
+                                                var categoryIcon = item.Category?.ToLower() switch
+                                                {
+                                                    "piano" => "🎹",
+                                                    "violin" => "🎻",
+                                                    "guitar" => "🎸",
+                                                    "theory" => "📚",
+                                                    "songbook" => "🎵",
+                                                    _ => "📘"
+                                                };
+                                                <span class="badge bg-secondary">@categoryIcon @item.Category</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">-</span>
+                                            }
+                                        </td>
+                                        <td>@(item.Inventories?.Sum(i => i.CurrentStock) ?? 0)</td>
+                                        <td>
+                                            @if (item.IsActive)
+                                            {
+                                                <span class="badge bg-success">Active</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger">Inactive</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-info btn-sm" onclick="viewDetails(@item.BookId)" title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-warning btn-sm" onclick="openEditModal(@item.BookId)" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-danger btn-sm" onclick="deleteBook(@item.BookId)" title="Delete">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create/Edit Modal -->
+<div class="modal fade" id="bookModal" tabindex="-1" aria-labelledby="bookModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bookModalLabel">Add New Book</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="bookForm">
+                <div class="modal-body">
+                    <input type="hidden" id="bookId" name="BookId" value="0" />
+                    
+                    <div class="mb-3">
+                        <label for="companyId" class="form-label">Company <span class="text-danger">*</span></label>
+                        <select class="form-select" id="companyId" name="CompanyId" required>
+                            <option value="">Select Company</option>
+                        </select>
+                        <div class="invalid-feedback"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="bookCode" class="form-label">Book Code <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="bookCode" name="BookCode" required maxlength="20">
+                        <div class="invalid-feedback"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="bookTitle" class="form-label">Book Title <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="bookTitle" name="BookTitle" required maxlength="200">
+                        <div class="invalid-feedback"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="author" class="form-label">Author</label>
+                        <input type="text" class="form-control" id="author" name="Author" maxlength="100">
+                        <div class="invalid-feedback"></div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="publisher" class="form-label">Publisher</label>
+                            <input type="text" class="form-control" id="publisher" name="Publisher" maxlength="100">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="isbn" class="form-label">ISBN</label>
+                            <input type="text" class="form-control" id="isbn" name="ISBN" maxlength="20">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="category" class="form-label">Category</label>
+                        <select class="form-select" id="category" name="Category">
+                            <option value="">Select Category</option>
+                            <option value="Piano">🎹 Piano</option>
+                            <option value="Violin">🎻 Violin</option>
+                            <option value="Guitar">🎸 Guitar</option>
+                            <option value="Theory">📚 Theory</option>
+                            <option value="Songbook">🎵 Songbook</option>
+                            <option value="Exercise">💪 Exercise</option>
+                            <option value="Technique">🎯 Technique</option>
+                            <option value="Method">📖 Method</option>
+                            <option value="Other">📘 Other</option>
+                        </select>
+                        <div class="invalid-feedback"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="Description" rows="3" maxlength="500"></textarea>
+                        <div class="invalid-feedback"></div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="isActive" name="IsActive" checked>
+                                <label class="form-check-label" for="isActive">
+                                    Active Status
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveButton">
+                        <i class="fas fa-save me-2"></i>Save Book
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailsModalLabel">Book Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="detailsContent">
+                <!-- Details content will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // URL configuration menggunakan Url Action
+        const bookUrls = {
+            getCreateForm: '@Url.Action("GetCreateForm", "Book")',
+            getEditForm: '@Url.Action("GetEditForm", "Book")',
+            create: '@Url.Action("Create", "Book")',
+            edit: '@Url.Action("Edit", "Book")',
+            details: '@Url.Action("Details", "Book")',
+            delete: '@Url.Action("Delete", "Book")'
+        };
+
+        // Book Module dengan production-ready AJAX calls (mengikuti pattern Grade)
+        const BookModule = {
+            // Properties
+            isEditMode: false,
+            bookTable: null,
+
+            // Initialize module
+            init: function() {
+                this.initializeDataTable();
+                this.bindEvents();
+            },
+
+            // Initialize DataTable
+            initializeDataTable: function() {
+                try {
+                    if ($.fn.DataTable && $('#bookTable').length) {
+                        this.bookTable = $('#bookTable').DataTable({
+                            responsive: true,
+                            order: [[0, 'asc']], // Sort by book code
+                            columnDefs: [
+                                { targets: [7], orderable: false } // Actions column not sortable
+                            ]
+                        });
+                        console.log('Book DataTable initialized successfully');
+                    }
+                } catch (error) {
+                    console.error('Error initializing DataTable:', error);
+                    this.showToast('Error initializing table. Some features may not work properly.', 'warning');
+                }
+            },
+
+            // Bind events
+            bindEvents: function() {
+                const self = this;
+
+                // Book code to uppercase
+                $(document).on('input', '#bookCode', function() {
+                    this.value = this.value.toUpperCase();
+                });
+
+                // Form submission
+                $(document).on('submit', '#bookForm', function(e) {
+                    e.preventDefault();
+                    self.submitForm();
+                });
+
+                // Modal events
+                $('#bookModal').on('hidden.bs.modal', function() {
+                    self.resetForm();
+                });
+            },
+
+            // Get anti-forgery token
+            getAntiForgeryToken: function() {
+                return $('input[name="__RequestVerificationToken"]').val() || 
+                       $('meta[name="__RequestVerificationToken"]').attr('content') || 
+                       '';
+            },
+
+            // Show toast notification
+            showToast: function(message, type) {
+                type = type || 'info';
+                
+                // Remove existing toasts
+                $('.toast').remove();
+                
+                const toastClass = {
+                    'success': 'bg-success text-white',
+                    'error': 'bg-danger text-white',
+                    'warning': 'bg-warning text-dark',
+                    'info': 'bg-info text-white'
+                }[type] || 'bg-info text-white';
+
+                const toastHtml = `
+                    <div class="toast position-fixed top-0 end-0 m-3 ${toastClass}" role="alert" style="z-index: 9999;">
+                        <div class="toast-body">
+                            ${message}
+                        </div>
+                    </div>
+                `;
+
+                $('body').append(toastHtml);
+                $('.toast').toast({ delay: 3000 }).toast('show');
+            },
+
+            // Reset form
+            resetForm: function() {
+                $('#bookForm')[0].reset();
+                $('#bookId').val('0');
+                this.isEditMode = false;
+                this.clearValidationErrors();
+                this.updateModalTitle();
+            },
+
+            // Clear validation errors
+            clearValidationErrors: function() {
+                $('.form-control, .form-select').removeClass('is-invalid');
+                $('.invalid-feedback').text('');
+            },
+
+            // Update modal title
+            updateModalTitle: function() {
+                const title = this.isEditMode ? 'Edit Book' : 'Add New Book';
+                $('#bookModalLabel').text(title);
+            },
+
+            // Load companies dropdown
+            loadCompanies: function() {
+                const self = this;
+                
+                $.ajax({
+                    url: bookUrls.getCreateForm,
+                    type: 'GET',
+                    timeout: 15000,
+                    success: function(response) {
+                        if (response && response.success && response.companies) {
+                            const select = $('#companyId');
+                            select.empty().append('<option value="">Select Company</option>');
+                            
+                            response.companies.forEach(function(company) {
+                                select.append(`<option value="${company.companyId}">${company.companyCode} - ${company.companyName}</option>`);
+                            });
+                            
+                            // Set default company if available
+                            if (response.model && response.model.companyId) {
+                                select.val(response.model.companyId);
+                            }
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error loading companies:', xhr, status, error);
+                        self.showToast('Error loading companies', 'error');
+                    }
+                });
+            },
+
+            // Open create modal
+            openCreateModal: function() {
+                this.isEditMode = false;
+                this.resetForm();
+                this.updateModalTitle();
+                this.loadCompanies();
+                $('#bookModal').modal('show');
+            },
+
+            // Submit form
+            submitForm: function() {
+                const self = this;
+                
+                // Clear previous validation errors
+                this.clearValidationErrors();
+                
+                // Disable save button
+                $('#saveButton').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Saving...');
+                
+                const formData = {
+                    BookId: $('#bookId').val(),
+                    CompanyId: $('#companyId').val(),
+                    BookCode: $('#bookCode').val().toUpperCase(),
+                    BookTitle: $('#bookTitle').val(),
+                    Author: $('#author').val(),
+                    Publisher: $('#publisher').val(),
+                    ISBN: $('#isbn').val(),
+                    Category: $('#category').val(),
+                    Description: $('#description').val(),
+                    IsActive: $('#isActive').is(':checked')
+                };
+
+                const url = this.isEditMode ? bookUrls.edit + '/' + formData.BookId : bookUrls.create;
+
+                $.ajax({
+                    url: url,
+                    type: 'POST',
+                    data: JSON.stringify(formData),
+                    contentType: 'application/json; charset=utf-8',
+                    headers: {
+                        'RequestVerificationToken': this.getAntiForgeryToken()
+                    },
+                    timeout: 30000,
+                    success: function(response) {
+                        if (response && response.success) {
+                            self.showToast(response.message, 'success');
+                            $('#bookModal').modal('hide');
+                            // Reload page after short delay
+                            setTimeout(function() {
+                                window.location.reload();
+                            }, 1500);
+                        } else {
+                            self.showToast(response.message || 'Error saving book', 'error');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        let errorMessage = 'Error saving book';
+                        if (status === 'timeout') {
+                            errorMessage = 'Request timeout while saving book. Please try again.';
+                        }
+                        self.showToast(errorMessage, 'error');
+                    },
+                    complete: function() {
+                        $('#saveButton').prop('disabled', false).html('<i class="fas fa-save me-2"></i>Save Book');
+                    }
+                });
+            },
+
+            // Open edit modal
+            openEditModal: function(bookId) {
+                const self = this;
+
+                $.ajax({
+                    url: bookUrls.getEditForm + '/' + bookId,
+                    type: 'GET',
+                    timeout: 15000,
+                    success: function(response) {
+                        if (response && response.success) {
+                            self.isEditMode = true;
+                            self.updateModalTitle();
+
+                            // Load companies first
+                            self.loadCompanies();
+
+                            // Set form values after a short delay to ensure companies are loaded
+                            setTimeout(function() {
+                                $('#bookId').val(response.model.bookId);
+                                $('#companyId').val(response.model.companyId);
+                                $('#bookCode').val(response.model.bookCode);
+                                $('#bookTitle').val(response.model.bookTitle);
+                                $('#author').val(response.model.author || '');
+                                $('#publisher').val(response.model.publisher || '');
+                                $('#isbn').val(response.model.isbn || '');
+                                $('#category').val(response.model.category || '');
+                                $('#description').val(response.model.description || '');
+                                $('#isActive').prop('checked', response.model.isActive);
+
+                                $('#bookModal').modal('show');
+                            }, 500);
+                        } else {
+                            self.showToast(response.message || 'Error loading book data', 'error');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        let errorMessage = 'Error loading book data';
+                        if (status === 'timeout') {
+                            errorMessage = 'Request timeout while loading book data. Please try again.';
+                        }
+                        self.showToast(errorMessage, 'error');
+                    }
+                });
+            },
+
+            // View details
+            viewDetails: function(bookId) {
+                const self = this;
+
+                $.ajax({
+                    url: bookUrls.details + '/' + bookId,
+                    type: 'GET',
+                    timeout: 15000,
+                    success: function(response) {
+                        if (response && response.success) {
+                            const data = response.data;
+                            const content = `
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <table class="table table-borderless">
+                                            <tr>
+                                                <td><strong>Book Code:</strong></td>
+                                                <td>${data.bookCode}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Book Title:</strong></td>
+                                                <td>${data.bookTitle}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Author:</strong></td>
+                                                <td>${data.author || 'Not specified'}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Publisher:</strong></td>
+                                                <td>${data.publisher || 'Not specified'}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <table class="table table-borderless">
+                                            <tr>
+                                                <td><strong>Category:</strong></td>
+                                                <td>${data.category || 'Not specified'}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>ISBN:</strong></td>
+                                                <td>${data.isbn || 'Not specified'}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Status:</strong></td>
+                                                <td>${data.isActive ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-danger">Inactive</span>'}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Company:</strong></td>
+                                                <td>${data.companyName}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+                                ${data.description ? `<div class="mt-3"><strong>Description:</strong><br>${data.description}</div>` : ''}
+                            `;
+                            
+                            $('#detailsContent').html(content);
+                            $('#detailsModal').modal('show');
+                        } else {
+                            self.showToast(response.message || 'Error loading book details', 'error');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        let errorMessage = 'Error loading book details';
+                        if (status === 'timeout') {
+                            errorMessage = 'Request timeout while loading book details. Please try again.';
+                        }
+                        self.showToast(errorMessage, 'error');
+                    }
+                });
+            },
+
+            // Delete book
+            deleteBook: function(bookId) {
+                const self = this;
+
+                // Use SweetAlert if available, otherwise use confirm
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Are you sure?',
+                        text: "You won't be able to revert this!",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        cancelButtonColor: '#3085d6',
+                        confirmButtonText: 'Yes, delete it!'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            self.performDelete(bookId);
+                        }
+                    });
+                } else {
+                    if (confirm('Are you sure you want to delete this book?')) {
+                        self.performDelete(bookId);
+                    }
+                }
+            },
+
+            // Perform delete
+            performDelete: function(bookId) {
+                const self = this;
+
+                $.ajax({
+                    url: bookUrls.delete + '/' + bookId,
+                    type: 'POST',
+                    headers: {
+                        'RequestVerificationToken': this.getAntiForgeryToken()
+                    },
+                    timeout: 15000,
+                    success: function(response) {
+                        if (response && response.success) {
+                            self.showToast(response.message, 'success');
+                            // Reload page after short delay
+                            setTimeout(function() {
+                                window.location.reload();
+                            }, 1500);
+                        } else {
+                            self.showToast(response.message || 'Error deleting book', 'error');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        let errorMessage = 'Error deleting book';
+                        if (status === 'timeout') {
+                            errorMessage = 'Request timeout while deleting book. Please try again.';
+                        }
+                        self.showToast(errorMessage, 'error');
+                    }
+                });
+            }
+        };
+
+        // Global functions untuk onclick handlers (same pattern as Grade)
+        function openCreateModal() {
+            BookModule.openCreateModal();
+        }
+
+        function openEditModal(bookId) {
+            BookModule.openEditModal(bookId);
+        }
+
+        function viewDetails(bookId) {
+            BookModule.viewDetails(bookId);
+        }
+
+        function deleteBook(bookId) {
+            BookModule.deleteBook(bookId);
+        }
+
+        // Document ready - Initialize module (same pattern as Grade)
+        $(document).ready(function() {
+            try {
+                BookModule.init();
+            } catch (error) {
+                console.error('Error initializing Book module:', error);
+            }
+        });
+    </script>
+}
