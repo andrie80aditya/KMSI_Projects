@@ -270,7 +270,7 @@
                     }
                 } catch (error) {
                     console.error('Error initializing DataTable:', error);
-                    this.showToast('Error initializing table. Some features may not work properly.', 'warning');
+                    KMSI.showToast('Error initializing table. Some features may not work properly.', 'warning');
                 }
             },
 
@@ -300,32 +300,6 @@
                 return $('input[name="__RequestVerificationToken"]').val() || 
                        $('meta[name="__RequestVerificationToken"]').attr('content') || 
                        '';
-            },
-
-            // Show toast notification
-            showToast: function(message, type) {
-                type = type || 'info';
-                
-                // Remove existing toasts
-                $('.toast').remove();
-                
-                const toastClass = {
-                    'success': 'bg-success text-white',
-                    'error': 'bg-danger text-white',
-                    'warning': 'bg-warning text-dark',
-                    'info': 'bg-info text-white'
-                }[type] || 'bg-info text-white';
-
-                const toastHtml = `
-                    <div class="toast position-fixed top-0 end-0 m-3 ${toastClass}" role="alert" style="z-index: 9999;">
-                        <div class="toast-body">
-                            ${message}
-                        </div>
-                    </div>
-                `;
-
-                $('body').append(toastHtml);
-                $('.toast').toast({ delay: 3000 }).toast('show');
             },
 
             // Reset form
@@ -374,7 +348,7 @@
                     },
                     error: function(xhr, status, error) {
                         console.error('Error loading companies:', xhr, status, error);
-                        self.showToast('Error loading companies', 'error');
+                        KMSI.showToast('Error loading companies', 'error');
                     }
                 });
             },
@@ -424,14 +398,14 @@
                     timeout: 30000,
                     success: function(response) {
                         if (response && response.success) {
-                            self.showToast(response.message, 'success');
+                            KMSI.showToast(response.message || 'Site saved successfully', 'success');
                             $('#bookModal').modal('hide');
                             // Reload page after short delay
                             setTimeout(function() {
                                 window.location.reload();
                             }, 1500);
                         } else {
-                            self.showToast(response.message || 'Error saving book', 'error');
+                            KMSI.showToast(response.message || 'Error saving book', 'error');
                         }
                     },
                     error: function(xhr, status, error) {
@@ -439,7 +413,7 @@
                         if (status === 'timeout') {
                             errorMessage = 'Request timeout while saving book. Please try again.';
                         }
-                        self.showToast(errorMessage, 'error');
+                        KMSI.showToast(errorMessage, 'error');
                     },
                     complete: function() {
                         $('#saveButton').prop('disabled', false).html('<i class="fas fa-save me-2"></i>Save Book');
@@ -479,7 +453,7 @@
                                 $('#bookModal').modal('show');
                             }, 500);
                         } else {
-                            self.showToast(response.message || 'Error loading book data', 'error');
+                            KMSI.showToast(response.message || 'Error loading book data', 'error');
                         }
                     },
                     error: function(xhr, status, error) {
@@ -487,7 +461,7 @@
                         if (status === 'timeout') {
                             errorMessage = 'Request timeout while loading book data. Please try again.';
                         }
-                        self.showToast(errorMessage, 'error');
+                        KMSI.showToast(errorMessage, 'error');
                     }
                 });
             },
@@ -552,7 +526,7 @@
                             $('#detailsContent').html(content);
                             $('#detailsModal').modal('show');
                         } else {
-                            self.showToast(response.message || 'Error loading book details', 'error');
+                            KMSI.showToast(response.message || 'Error loading book details', 'error');
                         }
                     },
                     error: function(xhr, status, error) {
@@ -560,7 +534,7 @@
                         if (status === 'timeout') {
                             errorMessage = 'Request timeout while loading book details. Please try again.';
                         }
-                        self.showToast(errorMessage, 'error');
+                        KMSI.showToast(errorMessage, 'error');
                     }
                 });
             },
@@ -604,13 +578,13 @@
                     timeout: 15000,
                     success: function(response) {
                         if (response && response.success) {
-                            self.showToast(response.message, 'success');
+                            KMSI.showToast(response.message, 'success');
                             // Reload page after short delay
                             setTimeout(function() {
                                 window.location.reload();
                             }, 1500);
                         } else {
-                            self.showToast(response.message || 'Error deleting book', 'error');
+                            KMSI.showToast(response.message || 'Error deleting book', 'error');
                         }
                     },
                     error: function(xhr, status, error) {
@@ -618,7 +592,7 @@
                         if (status === 'timeout') {
                             errorMessage = 'Request timeout while deleting book. Please try again.';
                         }
-                        self.showToast(errorMessage, 'error');
+                        KMSI.showToast(errorMessage, 'error');
                     }
                 });
             }
